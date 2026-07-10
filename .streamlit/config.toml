@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#00875A"          # Green Ecosira
+backgroundColor = "#0A0F1D"       # Sleek dark blue/slate
+secondaryBackgroundColor = "#151F32" # Lighter container background
+textColor = "#F1F5F9"             # Soft white text
+font = "sans serif"
