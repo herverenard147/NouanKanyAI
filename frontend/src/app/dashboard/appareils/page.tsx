@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Activity, AlertTriangle, ShieldCheck, Zap, RotateCcw, ActivitySquare, AlertOctagon } from 'lucide-react';
 
 export default function AppareilsPage() {
+  const router = useRouter();
   const [appareils, setAppareils] = useState<any[]>([]);
   const [totalPower, setTotalPower] = useState(0);
   useEffect(() => {
@@ -164,7 +166,7 @@ export default function AppareilsPage() {
 
             <div style={{ marginTop: 'auto', padding: '16px', borderTop: `1px solid ${app.status === 'alerte' ? '#FCA5A5' : 'var(--surface-border)'}`, backgroundColor: app.status === 'alerte' ? '#fff' : 'transparent' }}>
               {app.status === 'alerte' ? (
-                <button className="btn-primary" style={{ backgroundColor: '#DC2626', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                <button onClick={() => router.push('/dashboard/predictions')} className="btn-primary" style={{ backgroundColor: '#DC2626', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', border: 'none', cursor: 'pointer' }}>
                   <AlertTriangle size={16} /> Lancer Diagnostic d'Urgence
                 </button>
               ) : app.status === 'hors ligne' ? (

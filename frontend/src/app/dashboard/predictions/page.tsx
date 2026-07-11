@@ -5,7 +5,7 @@ import { Bot, Send, Sparkles, Zap, ShieldAlert, Loader2 } from 'lucide-react';
 
 export default function PredictionsPage() {
   const [inputMessage, setInputMessage] = useState('');
-  const defaultMessage = { sender: 'ai', text: 'Bonjour ! Je suis votre Assistant IA EnergAI. Je suis connecté à vos modèles XGBoost et Isolation Forest en temps réel. Comment puis-je vous aider ?' };
+  const defaultMessage = { sender: 'ai', text: 'Bonjour ! Je suis votre Assistant IA NouanKanyAI. Je suis connecté à vos modèles XGBoost et Isolation Forest en temps réel. Comment puis-je vous aider ?' };
   const [messages, setMessages] = useState<any[]>([defaultMessage]);
   const [isClient, setIsClient] = useState(false);
   
@@ -91,7 +91,40 @@ export default function PredictionsPage() {
     } catch (error) {
       setMessages(prev => {
         const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: "Erreur de connexion a l'IA EnergAI." };
+        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: "Erreur de connexion a l'IA NouanKanyAI." };
+        return newMsgs;
+      });
+    }
+  };
+
+  const executeAction = async (rec: any) => {
+    const actionText = `J'exécute l'action recommandée : "${rec.action}" suite à "${rec.title}". Lance l'analyse...`;
+    
+    // Optimistic UI update
+    setMessages(prev => [...prev, { sender: 'user', text: actionText }]);
+    setMessages(prev => [...prev, { sender: 'ai', text: "Lancement du protocole d'intervention en cours..." }]);
+    
+    try {
+      const machinesRes = await fetch('http://localhost:8000/api/machines');
+      const currentMachinesState = await machinesRes.json();
+      
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: actionText, context: currentMachinesState })
+      });
+      
+      const data = await response.json();
+      
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: data.response };
+        return newMsgs;
+      });
+    } catch (error) {
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: "Erreur lors de l'exécution de l'action." };
         return newMsgs;
       });
     }
@@ -108,6 +141,15 @@ export default function PredictionsPage() {
     if (severity === 'critique') return '#DC2626';
     if (severity === 'modérée') return 'var(--accent)';
     return 'var(--primary)';
+  };
+
+  // Helper to remove or format markdown symbols like **, ###, * from AI responses
+  const formatText = (text: string) => {
+    if (!text) return '';
+    return text
+      .replace(/###/g, '') // Remove ###
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold stars but keep text
+      .replace(/\*/g, '•'); // Replace remaining single stars with a clean bullet point
   };
 
   return (
@@ -129,7 +171,7 @@ export default function PredictionsPage() {
           <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ backgroundColor: 'var(--primary)', padding: '8px', borderRadius: '50%' }}><Bot color="#fff" size={20} /></div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>EnergAI Copilot</div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>NouanKanyAI Copilot</div>
               <div style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>● En ligne et synchronisé (FastAPI)</div>
             </div>
           </div>
@@ -142,9 +184,10 @@ export default function PredictionsPage() {
                   color: msg.sender === 'user' ? '#fff' : 'var(--foreground)',
                   padding: '12px 16px', borderRadius: '12px',
                   border: msg.sender === 'ai' ? '1px solid var(--surface-border)' : 'none',
-                  fontSize: '14px', lineHeight: '1.5'
+                  fontSize: '14px', lineHeight: '1.5',
+                  whiteSpace: 'pre-wrap'
                 }}>
-                  {msg.text}
+                  {formatText(msg.text)}
                 </div>
               </div>
             ))}
@@ -194,8 +237,10 @@ export default function PredictionsPage() {
                         ) : (
                           <div style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>ACTION CRITIQUE</div>
                         )}
-                        <button className={rec.severity === 'critique' ? "btn-secondary" : "btn-primary"} 
-                                style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', borderColor: rec.severity === 'critique' ? '#DC2626' : '', color: rec.severity === 'critique' ? '#DC2626' : '' }}>
+                        <button 
+                                onClick={() => executeAction(rec)}
+                                className={rec.severity === 'critique' ? "btn-secondary" : "btn-primary"} 
+                                style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', borderColor: rec.severity === 'critique' ? '#DC2626' : '', color: rec.severity === 'critique' ? '#DC2626' : '', cursor: 'pointer' }}>
                           {rec.action}
                         </button>
                       </div>

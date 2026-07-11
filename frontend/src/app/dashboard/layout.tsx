@@ -88,8 +88,41 @@ export default function DashboardLayout({
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh' }}>
         {/* Top Header */}
         <div style={{ height: '64px', backgroundColor: 'var(--surface)', borderBottom: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', width: '400px', backgroundColor: 'var(--background-alt)', borderRadius: '6px', padding: '8px 16px', border: '1px solid var(--surface-border)' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>🔍 Search audits, invoices, or metrics...</span>
+          <div style={{ display: 'flex', alignItems: 'center', width: '400px', backgroundColor: 'var(--background-alt)', borderRadius: '6px', padding: '8px 16px', border: '1px solid var(--surface-border)', gap: '12px' }}>
+            <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>🔍</span>
+            <input 
+              type="text" 
+              placeholder="Rechercher des audits, factures ou métriques..." 
+              style={{ 
+                border: 'none', 
+                backgroundColor: 'transparent', 
+                width: '100%', 
+                color: 'var(--foreground)', 
+                fontSize: '14px',
+                outline: 'none' 
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const target = e.target as HTMLInputElement;
+                  if (target.value.trim() !== "") {
+                    // Small visual feedback simulation
+                    const btn = document.createElement('div');
+                    btn.textContent = `Recherche pour "${target.value}" en cours...`;
+                    btn.style.position = 'fixed';
+                    btn.style.bottom = '24px';
+                    btn.style.right = '24px';
+                    btn.style.backgroundColor = 'var(--primary)';
+                    btn.style.color = '#FFF';
+                    btn.style.padding = '12px 24px';
+                    btn.style.borderRadius = '8px';
+                    btn.style.zIndex = '9999';
+                    btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                    document.body.appendChild(btn);
+                    setTimeout(() => btn.remove(), 2500);
+                  }
+                }
+              }}
+            />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--primary-light)', padding: '6px 12px', borderRadius: '20px', border: '1px solid var(--primary)' }}>

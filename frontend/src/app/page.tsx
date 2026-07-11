@@ -81,7 +81,7 @@ export default function Home() {
         <div className="auth-hero">
           <div style={{ position: 'relative', zIndex: 10 }}>
             <h1 style={{ color: 'var(--primary)', fontSize: '56px', fontWeight: 800, marginBottom: '24px', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-              EnergAI
+              NouanKanyAI
             </h1>
             <h2 style={{ fontSize: '24px', fontWeight: 500, color: 'var(--foreground)', marginBottom: '40px', lineHeight: 1.4, maxWidth: '400px' }}>
               Gérez votre consommation.<br/>
@@ -113,7 +113,7 @@ export default function Home() {
               <p style={{ color: 'var(--text-muted)', fontSize: '15px', lineHeight: 1.5 }}>
                 {authMode === 'login' 
                   ? 'Connectez-vous pour accéder à votre nœud industriel sécurisé.' 
-                  : 'Rejoignez le réseau EnergAI pour optimiser votre consommation.'}
+                  : 'Rejoignez le réseau NouanKanyAI pour optimiser votre consommation.'}
               </p>
             </div>
 
