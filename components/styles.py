@@ -1,6 +1,6 @@
 """
-EnergAI — CSS premium et styles injectés pour Streamlit.
-Dark mode glassmorphism avec compteur de gains FCFA animé.
+EnergAI — CSS Light Theme Corporate et styles injectés pour Streamlit.
+Design flat, épuré avec des accents verts.
 """
 
 def inject_custom_css():
@@ -8,15 +8,16 @@ def inject_custom_css():
     return """
     <style>
     /* ══════════════════════════════════════════════════════════════
-       ENERGAI — PREMIUM DARK THEME
+       ENERGAI — LIGHT CORPORATE THEME
        ══════════════════════════════════════════════════════════════ */
     
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
     /* ── Global ────────────────────────────────────────────────── */
     .stApp {
-        background: linear-gradient(135deg, #1A1A2E 0%, #16213E 50%, #0F3460 100%);
+        background-color: #F8FAFC !important;
         font-family: 'Inter', sans-serif;
+        color: #1E293B;
     }
 
     .stApp > header {
@@ -25,72 +26,55 @@ def inject_custom_css():
 
     /* ── Sidebar ───────────────────────────────────────────────── */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1A1A2E 0%, #0D1B2A 100%) !important;
-        border-right: 1px solid rgba(0, 230, 118, 0.15);
+        background-color: #FFFFFF !important;
+        border-right: 1px solid #E2E8F0;
     }
     
     [data-testid="stSidebar"] .stMarkdown h1,
     [data-testid="stSidebar"] .stMarkdown h2,
-    [data-testid="stSidebar"] .stMarkdown h3 {
-        color: #00E676 !important;
-        font-family: 'Outfit', sans-serif;
-    }
-
-    /* ── Glassmorphism Cards ───────────────────────────────────── */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 24px;
-        margin: 8px 0;
-        transition: all 0.3s ease;
+    [data-testid="stSidebar"] .stMarkdown h3,
+    [data-testid="stSidebar"] p {
+        color: #1E293B !important;
     }
     
-    .glass-card:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(0, 230, 118, 0.3);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 32px rgba(0, 230, 118, 0.1);
+    [data-testid="stSidebar"] hr {
+        border-color: #E2E8F0 !important;
     }
 
-    /* ── Hero Savings Counter ──────────────────────────────────── */
+    /* ── Cards (Flat Corporate) ────────────────────────────────── */
+    .glass-card, .metric-card, .sub-card, .mini-stat {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 8px 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .glass-card:hover, .metric-card:hover, .sub-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-color: #0F7244;
+        transform: translateY(-2px);
+    }
+
+    /* ── Hero Savings Counter (Login Left Panel Style) ─────────── */
     .savings-hero {
-        background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(0, 176, 255, 0.15) 100%);
-        backdrop-filter: blur(20px);
-        border: 1px solid rgba(0, 230, 118, 0.3);
-        border-radius: 20px;
-        padding: 32px 40px;
+        background-color: #E6F4EA;
+        border: 1px solid rgba(15, 114, 68, 0.2);
+        border-radius: 16px;
+        padding: 40px;
         margin: 16px 0 24px 0;
         text-align: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .savings-hero::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(0, 230, 118, 0.08) 0%, transparent 60%);
-        animation: pulse-glow 4s ease-in-out infinite;
-    }
-
-    @keyframes pulse-glow {
-        0%, 100% { opacity: 0.5; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.05); }
     }
 
     .savings-label {
         font-family: 'Inter', sans-serif;
         font-size: 16px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.7);
+        font-weight: 600;
+        color: #0F7244;
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 1px;
         margin-bottom: 8px;
     }
 
@@ -98,122 +82,104 @@ def inject_custom_css():
         font-family: 'Outfit', sans-serif;
         font-size: 56px;
         font-weight: 800;
-        background: linear-gradient(90deg, #00E676, #00B0FF, #00E676);
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: gradient-flow 3s linear infinite;
+        color: #0F7244;
         line-height: 1.1;
         margin: 8px 0;
     }
 
-    @keyframes gradient-flow {
-        0% { background-position: 0% center; }
-        100% { background-position: 200% center; }
-    }
-
     .savings-trend {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
-        color: #00E676;
+        color: #047857;
         display: inline-flex;
         align-items: center;
         gap: 6px;
     }
 
-    .savings-trend .arrow {
-        font-size: 22px;
-        animation: bounce-up 1.5s ease-in-out infinite;
-    }
-
-    @keyframes bounce-up {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
-    }
-
     /* ── Metric Cards ──────────────────────────────────────────── */
     .metric-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
         padding: 20px;
-        text-align: center;
-        transition: all 0.3s ease;
+        text-align: left;
     }
 
-    .metric-card:hover {
-        border-color: rgba(0, 230, 118, 0.3);
-        box-shadow: 0 4px 20px rgba(0, 230, 118, 0.1);
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .metric-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748B;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .metric-value {
         font-family: 'Outfit', sans-serif;
         font-size: 32px;
         font-weight: 700;
-        color: #FFFFFF;
-        margin: 8px 0 4px;
-    }
-
-    .metric-label {
-        font-size: 13px;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        color: #1E293B;
+        margin: 0;
     }
 
     .metric-delta {
         font-size: 14px;
         font-weight: 600;
-        margin-top: 4px;
+        margin-top: 8px;
+        display: inline-flex;
+        padding: 2px 8px;
+        border-radius: 12px;
     }
 
-    .metric-delta.positive { color: #00E676; }
-    .metric-delta.negative { color: #FF5252; }
+    .metric-delta.positive { 
+        color: #047857;
+        background-color: #ECFDF5;
+    }
+    .metric-delta.negative { 
+        color: #B91C1C;
+        background-color: #FEF2F2;
+    }
 
     /* ── Alert Cards ───────────────────────────────────────────── */
     .alert-item {
-        background: rgba(255, 255, 255, 0.04);
-        border-left: 3px solid;
-        border-radius: 0 12px 12px 0;
-        padding: 14px 18px;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-left: 4px solid;
+        border-radius: 8px;
+        padding: 16px;
         margin: 8px 0;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
     }
 
-    .alert-item:hover {
-        background: rgba(255, 255, 255, 0.07);
-    }
-
-    .alert-item.haute { border-left-color: #FF5252; }
-    .alert-item.moyenne { border-left-color: #FFD600; }
-    .alert-item.info { border-left-color: #00B0FF; }
+    .alert-item.haute { border-left-color: #DC2626; }
+    .alert-item.moyenne { border-left-color: #F59E0B; }
+    .alert-item.info { border-left-color: #0F7244; }
 
     .alert-type {
-        font-weight: 600;
+        font-weight: 700;
         font-size: 14px;
-        color: #FFFFFF;
+        color: #1E293B;
+        margin-bottom: 4px;
     }
 
     .alert-message {
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.7);
+        color: #475569;
         line-height: 1.5;
     }
 
     .alert-date {
         font-size: 11px;
-        color: rgba(255, 255, 255, 0.4);
-        margin-top: 4px;
+        color: #94A3B8;
+        margin-top: 8px;
     }
 
     /* ── Progress Bars ─────────────────────────────────────────── */
     .progress-container {
-        margin: 10px 0;
+        margin: 12px 0;
     }
 
     .progress-label {
@@ -221,32 +187,36 @@ def inject_custom_css():
         justify-content: space-between;
         margin-bottom: 6px;
         font-size: 14px;
-        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+        color: #334155;
     }
 
     .progress-bar {
-        height: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
+        height: 6px;
+        background: #E2E8F0;
+        border-radius: 3px;
         overflow: hidden;
     }
 
     .progress-fill {
         height: 100%;
-        border-radius: 4px;
-        transition: width 1s ease-out;
+        border-radius: 3px;
+        background-color: #0F7244;
     }
 
-    .progress-fill.green { background: linear-gradient(90deg, #00E676, #69F0AE); }
-    .progress-fill.blue { background: linear-gradient(90deg, #00B0FF, #40C4FF); }
-    .progress-fill.orange { background: linear-gradient(90deg, #FF9800, #FFB74D); }
-    .progress-fill.red { background: linear-gradient(90deg, #FF5252, #FF8A80); }
+    .progress-fill.red { background-color: #DC2626; }
+    .progress-fill.orange { background-color: #F59E0B; }
+    .progress-fill.blue { background-color: #0EA5E9; }
 
     /* ── Auth Page ──────────────────────────────────────────────── */
     .auth-container {
         max-width: 480px;
         margin: 0 auto;
         padding: 40px;
+        background: #FFFFFF;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border: 1px solid #E2E8F0;
     }
 
     .auth-header {
@@ -256,74 +226,61 @@ def inject_custom_css():
 
     .auth-logo {
         font-family: 'Outfit', sans-serif;
-        font-size: 42px;
+        font-size: 36px;
         font-weight: 800;
-        background: linear-gradient(90deg, #00E676, #00B0FF);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #0F7244;
         margin-bottom: 8px;
     }
 
     .auth-tagline {
         font-size: 16px;
-        color: rgba(255, 255, 255, 0.6);
+        color: #64748B;
         line-height: 1.5;
     }
 
     .profile-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 24px;
+        background: #F8FAFC;
+        border: 2px solid #E2E8F0;
+        border-radius: 12px;
+        padding: 16px;
         text-align: center;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
     }
 
-    .profile-card:hover, .profile-card.selected {
-        border-color: #00E676;
-        background: rgba(0, 230, 118, 0.1);
-        box-shadow: 0 0 20px rgba(0, 230, 118, 0.15);
+    .profile-card:hover {
+        border-color: #0F7244;
+        background: #F0FDF4;
     }
 
     .profile-icon {
-        font-size: 48px;
-        margin-bottom: 12px;
+        font-size: 32px;
+        color: #0F7244;
+        margin-bottom: 8px;
     }
 
     .profile-title {
-        font-family: 'Outfit', sans-serif;
-        font-size: 20px;
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
         font-weight: 600;
-        color: #FFFFFF;
+        color: #1E293B;
     }
 
     .profile-desc {
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.5);
-        margin-top: 4px;
+        font-size: 12px;
+        color: #64748B;
     }
 
     /* ── Subscription Cards ────────────────────────────────────── */
     .sub-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 28px;
         text-align: center;
-        transition: all 0.3s ease;
         position: relative;
     }
 
-    .sub-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-    }
-
     .sub-card.recommended {
-        border-color: #00E676;
-        background: rgba(0, 230, 118, 0.08);
-        box-shadow: 0 0 30px rgba(0, 230, 118, 0.15);
+        border-color: #0F7244;
+        background: #F0FDF4;
+        box-shadow: 0 4px 6px -1px rgba(15, 114, 68, 0.1);
     }
 
     .sub-badge {
@@ -331,34 +288,34 @@ def inject_custom_css():
         top: -12px;
         left: 50%;
         transform: translateX(-50%);
-        background: linear-gradient(90deg, #00E676, #00B0FF);
-        color: #1A1A2E;
-        font-weight: 700;
-        font-size: 12px;
-        padding: 4px 16px;
-        border-radius: 20px;
+        background: #0F7244;
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 11px;
+        padding: 4px 12px;
+        border-radius: 12px;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
     }
 
     .sub-name {
         font-family: 'Outfit', sans-serif;
-        font-size: 24px;
+        font-size: 20px;
         font-weight: 700;
-        color: #FFFFFF;
-        margin: 12px 0 8px;
+        color: #1E293B;
+        margin: 12px 0 4px;
     }
 
     .sub-price {
         font-family: 'Outfit', sans-serif;
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 800;
-        color: #00E676;
+        color: #0F7244;
     }
 
     .sub-period {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.5);
+        font-size: 13px;
+        color: #64748B;
     }
 
     .sub-features {
@@ -369,26 +326,31 @@ def inject_custom_css():
     }
 
     .sub-features li {
-        padding: 6px 0;
+        padding: 8px 0;
         font-size: 14px;
-        color: rgba(255, 255, 255, 0.7);
+        color: #334155;
+        border-bottom: 1px solid #F1F5F9;
+    }
+    
+    .sub-features li:last-child {
+        border-bottom: none;
     }
 
     .sub-features li::before {
         content: '✓ ';
-        color: #00E676;
+        color: #0F7244;
         font-weight: 700;
     }
 
     /* ── Section Headers ───────────────────────────────────────── */
     .section-header {
         font-family: 'Outfit', sans-serif;
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 700;
-        color: #FFFFFF;
+        color: #1E293B;
         margin: 24px 0 16px;
         padding-bottom: 8px;
-        border-bottom: 2px solid rgba(0, 230, 118, 0.2);
+        border-bottom: 2px solid #E2E8F0;
     }
 
     /* ── Notification Badge ────────────────────────────────────── */
@@ -396,112 +358,102 @@ def inject_custom_css():
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #FF5252;
+        background: #DC2626;
         color: white;
         font-size: 11px;
         font-weight: 700;
-        min-width: 20px;
-        height: 20px;
-        border-radius: 10px;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 9px;
         padding: 0 6px;
-        animation: pulse-badge 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-badge {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.4); }
-        50% { box-shadow: 0 0 0 6px rgba(255, 82, 82, 0); }
     }
 
     /* ── Streamlit Overrides ───────────────────────────────────── */
     .stButton > button {
-        background: linear-gradient(90deg, #00E676, #00C853) !important;
-        color: #1A1A2E !important;
-        font-weight: 700 !important;
+        background-color: #0F7244 !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
         border: none !important;
-        border-radius: 12px !important;
-        padding: 12px 32px !important;
-        font-size: 16px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3) !important;
+        border-radius: 8px !important;
+        padding: 8px 24px !important;
+        transition: all 0.2s ease !important;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(0, 230, 118, 0.4) !important;
+        background-color: #0B5532 !important;
+    }
+    
+    /* Secondary button styling (Streamlit default secondary) */
+    .stButton > button[kind="secondary"] {
+        background-color: #FFFFFF !important;
+        color: #1E293B !important;
+        border: 1px solid #E2E8F0 !important;
+    }
+    
+    .stButton > button[kind="secondary"]:hover {
+        background-color: #F8FAFC !important;
+        border-color: #CBD5E1 !important;
     }
 
     .stSelectbox > div > div,
     .stTextInput > div > div > input,
     .stNumberInput > div > div > input {
-        background-color: rgba(255, 255, 255, 0.06) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 12px !important;
-        color: #E0E0E0 !important;
+        background-color: #FFFFFF !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        color: #1E293B !important;
     }
 
     .stSelectbox > div > div:focus-within,
     .stTextInput > div > div > input:focus,
     .stNumberInput > div > div > input:focus {
-        border-color: #00E676 !important;
-        box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.2) !important;
+        border-color: #0F7244 !important;
+        box-shadow: 0 0 0 2px rgba(15, 114, 68, 0.2) !important;
     }
 
     /* ── Tabs ──────────────────────────────────────────────────── */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        padding: 4px;
+        gap: 8px;
+        background: transparent;
+        border-bottom: 2px solid #E2E8F0;
+        padding: 0;
     }
 
     .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        color: rgba(255, 255, 255, 0.6);
+        border-radius: 0;
+        color: #64748B;
         font-weight: 600;
-        padding: 10px 20px;
+        padding: 12px 16px;
+        background: transparent;
     }
 
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #00E676, #00C853) !important;
-        color: #1A1A2E !important;
-    }
-
-    /* ── Counters Animation ────────────────────────────────────── */
-    .counter-animate {
-        animation: countUp 2s ease-out forwards;
-    }
-
-    @keyframes countUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        color: #0F7244 !important;
+        background: transparent !important;
+        border-bottom: 2px solid #0F7244 !important;
     }
 
     /* ── Mini stat cards ───────────────────────────────────────── */
     .mini-stat {
-        background: rgba(255, 255, 255, 0.04);
-        border-radius: 12px;
         padding: 16px;
         text-align: center;
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: none;
+        background: #FFFFFF;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .mini-stat-value {
         font-family: 'Outfit', sans-serif;
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 700;
-        color: #00B0FF;
+        color: #1E293B;
     }
 
     .mini-stat-label {
         font-size: 12px;
-        color: rgba(255, 255, 255, 0.5);
+        color: #64748B;
         margin-top: 4px;
-    }
-
-    /* ── Responsive ────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-        .savings-amount { font-size: 36px; }
-        .metric-value { font-size: 24px; }
+        font-weight: 500;
     }
 
     /* ── Hide Streamlit branding ───────────────────────────────── */
@@ -520,7 +472,7 @@ def savings_counter_html(amount, trend_pct, alerts_count, kwh_saved):
         <div class="savings-trend">
             <span class="arrow">↑</span> +{trend_pct:.0f}% par rapport au mois dernier
         </div>
-        <div style="display: flex; justify-content: center; gap: 40px; margin-top: 20px;">
+        <div style="display: flex; justify-content: center; gap: 24px; margin-top: 24px;">
             <div class="mini-stat">
                 <div class="mini-stat-value">{alerts_count}</div>
                 <div class="mini-stat-label">Alertes détectées</div>
@@ -540,11 +492,16 @@ def metric_card_html(icon, value, label, delta=None, delta_type="positive"):
     if delta:
         delta_html = f'<div class="metric-delta {delta_type}">{delta}</div>'
     
+    # Optional icon if provided, otherwise empty
+    icon_html = f'<span style="font-size: 20px; color: #0F7244;">{icon}</span>' if icon else ""
+    
     return f"""
     <div class="metric-card">
-        <div style="font-size: 28px;">{icon}</div>
+        <div class="metric-header">
+            <span class="metric-label">{label}</span>
+            {icon_html}
+        </div>
         <div class="metric-value">{value}</div>
-        <div class="metric-label">{label}</div>
         {delta_html}
     </div>
     """
@@ -593,7 +550,7 @@ def subscription_card_html(name, price, features, recommended=False, cible=""):
     <div class="sub-card {rec_class}">
         {rec_badge}
         <div class="sub-name">{name}</div>
-        <div style="font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px;">{cible}</div>
+        <div style="font-size: 13px; color: #64748B; margin-bottom: 12px;">{cible}</div>
         <div class="sub-price">{price_display}</div>
         <div class="sub-period">{period_display}</div>
         <ul class="sub-features">{features_html}</ul>

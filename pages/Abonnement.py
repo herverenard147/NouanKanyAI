@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from components.auth import init_auth, require_auth, logout
 from components.styles import inject_custom_css, subscription_card_html
+from components.sidebar import render_sidebar
 
 # ── Config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="EnergAI — Abonnement", page_icon="E", layout="wide")
@@ -21,32 +22,7 @@ user = require_auth()
 is_fr = st.session_state.get("langue", "FR") == "FR"
 
 # ── Sidebar ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## EnergAI")
-    st.markdown("---")
-    st.markdown(f"### {user['nom']}")
-    st.markdown(f"*{user['type_compte']}*")
-    
-    abo = st.session_state.get("abonnement_actif", "decouverte")
-    abo_noms = {"decouverte": "Découverte", "essentiel": "Essentiel", "optimum": "Optimum", "business": "Business"}
-    st.markdown(f"**Formule active**: {abo_noms.get(abo, abo)}")
-    
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("FR", use_container_width=True,
-                     type="primary" if is_fr else "secondary"):
-            st.session_state.langue = "FR"
-            st.rerun()
-    with col2:
-        if st.button("EN", use_container_width=True,
-                     type="primary" if not is_fr else "secondary"):
-            st.session_state.langue = "EN"
-            st.rerun()
-    st.markdown("---")
-    if st.button("Se déconnecter" if is_fr else "Logout", use_container_width=True):
-        logout()
-        st.switch_page("app.py")
+render_sidebar()
 
 # ── Header ────────────────────────────────────────────────────────────────
 formules_title = "Formules d'Abonnement" if is_fr else "Subscription Plans"
@@ -86,14 +62,14 @@ abo_actif = st.session_state.get("abonnement_actif", "decouverte")
 # ── Affichage de la recommandation ─────────────────────────────────────────
 if reco:
     st.markdown(
-        f"""<div class="glass-card" style="border-color: rgba(0, 230, 118, 0.4); margin-bottom: 24px;">
+        f"""<div class="glass-card" style="border-color: #0F7244; background: #F0FDF4; margin-bottom: 24px;">
             <div style="display: flex; align-items: center; gap: 16px;">
                 <span style="font-size: 36px;"></span>
                 <div>
-                    <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #00E676;">
+                    <div style="font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700; color: #0F7244;">
                         {'Recommandation basée sur vos appareils' if is_fr else 'Recommendation based on your devices'}
                     </div>
-                    <div style="font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 4px;">
+                    <div style="font-size: 14px; color: #64748B; margin-top: 4px;">
                         {reco['raison'][:150]}...
                     </div>
                 </div>
@@ -204,7 +180,7 @@ except Exception:
 # ── Footer ────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color: rgba(255,255,255,0.3); font-size:12px;'>"
+    "<div style='text-align:center; color: #94A3B8; font-size:12px;'>"
     "EnergAI — Tarifs basés sur le référentiel CIE Côte d'Ivoire | "
     "L'assistant utilise strictement le référentiel tarifaire structuré"
     "</div>",

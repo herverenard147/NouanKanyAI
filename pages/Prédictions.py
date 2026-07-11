@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from components.auth import init_auth, require_auth, logout
 from components.styles import inject_custom_css, alert_item_html, metric_card_html
+from components.sidebar import render_sidebar
 from components.prediction import predire_consommation_mois, detecter_anomalies
 from data.synthetic_data import generer_historique_consommation, generer_alertes
 
@@ -23,27 +24,7 @@ user = require_auth()
 is_fr = st.session_state.get("langue", "FR") == "FR"
 
 # ── Sidebar ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## EnergAI")
-    st.markdown("---")
-    st.markdown(f"### {user['nom']}")
-    st.markdown(f"*{user['type_compte']}*")
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("FR", use_container_width=True,
-                     type="primary" if is_fr else "secondary"):
-            st.session_state.langue = "FR"
-            st.rerun()
-    with col2:
-        if st.button("EN", use_container_width=True,
-                     type="primary" if not is_fr else "secondary"):
-            st.session_state.langue = "EN"
-            st.rerun()
-    st.markdown("---")
-    if st.button("Se déconnecter" if is_fr else "Logout", use_container_width=True):
-        logout()
-        st.switch_page("app.py")
+render_sidebar()
 
 # ── Header ────────────────────────────────────────────────────────────────
 st.markdown(f"# {'Prédictions & Alertes' if is_fr else 'Predictions & Alerts'}")
@@ -115,7 +96,7 @@ if not predictions.empty:
         mode='lines',
         line=dict(width=0),
         fill='tonexty',
-        fillcolor='rgba(0, 230, 118, 0.1)',
+        fillcolor='rgba(15, 114, 68, 0.1)',
         name="Intervalle de confiance" if is_fr else "Confidence interval",
     ))
     
@@ -125,7 +106,7 @@ if not predictions.empty:
         y=predictions["prediction_kwh"],
         mode='lines+markers',
         name='Prédiction' if is_fr else 'Prediction',
-        line=dict(color='#00E676', width=3),
+        line=dict(color='#0F7244', width=3),
         marker=dict(size=4),
     ))
     
@@ -143,10 +124,10 @@ if not predictions.empty:
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='rgba(255,255,255,0.7)', family='Inter'),
+        font=dict(color='#64748B', family='Inter'),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        xaxis=dict(gridcolor='rgba(255,255,255,0.05)', showgrid=True),
-        yaxis=dict(title="kWh", gridcolor='rgba(255,255,255,0.05)', showgrid=True),
+        xaxis=dict(gridcolor='#E2E8F0', showgrid=True),
+        yaxis=dict(title="kWh", gridcolor='#E2E8F0', showgrid=True),
         margin=dict(l=40, r=20, t=40, b=40),
         height=400,
         hovermode="x unified",
@@ -204,7 +185,7 @@ if not historique.empty:
                             {anomalie['prediction_kwh']:.1f} kWh {'prévus' if is_fr else 'predicted'} 
                             (+{anomalie['ecart_pct']:.0f}%)
                             <br>{'Economie potentielle' if is_fr else 'Potential saving'}: 
-                            <strong style="color: #00E676;">{anomalie['economies_potentielles_fcfa']:,.0f} FCFA</strong>
+                            <strong style="color: #0F7244;">{anomalie['economies_potentielles_fcfa']:,.0f} FCFA</strong>
                         </div>
                     </div>
                 </div>""",

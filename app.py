@@ -26,31 +26,13 @@ st.markdown(inject_custom_css(), unsafe_allow_html=True)
 # Initialiser l'auth
 init_auth()
 
-# ── Sidebar ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## EnergAI")
-    st.markdown("---")
-    
-    # Toggle langue
-    col_lang1, col_lang2 = st.columns(2)
-    with col_lang1:
-        if st.button("FR", use_container_width=True, 
-                     type="primary" if st.session_state.langue == "FR" else "secondary"):
-            st.session_state.langue = "FR"
-            st.rerun()
-    with col_lang2:
-        if st.button("EN", use_container_width=True,
-                     type="primary" if st.session_state.langue == "EN" else "secondary"):
-            st.session_state.langue = "EN"
-            st.rerun()
-    
-    if st.session_state.authenticated:
-        st.markdown(f"### {st.session_state.user['nom']}")
-        st.markdown(f"*{st.session_state.user['type_compte']}*")
-        st.markdown("---")
-        if st.button("Se déconnecter", use_container_width=True):
-            logout()
-            st.rerun()
+# Cacher la sidebar complètement sur la page de connexion
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ── Si déjà connecté, rediriger vers le dashboard ────────────────────────
 if st.session_state.authenticated:
@@ -59,29 +41,31 @@ if st.session_state.authenticated:
 # ── Page de connexion ────────────────────────────────────────────────────
 is_fr = st.session_state.langue == "FR"
 
-# Header centré
-st.markdown("""
-<div class="auth-header">
-    <div class="auth-logo">EnergAI</div>
-    <div class="auth-tagline">
-        """ + ("Maîtrisez votre consommation d'énergie" if is_fr else "Master your energy consumption") + """
-    </div>
-</div>
-""", unsafe_allow_html=True)
+if "auth_mode" not in st.session_state:
+    st.session_state.auth_mode = "login"
 
-# Layout centré
-col_spacer1, col_form, col_spacer2 = st.columns([1, 2, 1])
+# Layout Split Screen (Left: Hero, Right: Form)
+col_hero, col_form = st.columns([1, 1], gap="large")
+
+with col_hero:
+    # Image générée
+    st.image("assets/hero_illustration.png", use_container_width=True)
+    
+    st.markdown("""
+    <div style="text-align: center; margin-top: 20px;">
+        <h1 style="color: #0F7244; font-size: 32px; font-weight: 800; margin-bottom: 8px;">NouanKanyAI</h1>
+        <h2 style="color: #1E293B; font-size: 20px; font-weight: 600;">
+            """ + ("Reprenez le contrôle de votre facture CIE." if is_fr else "Take back control of your energy bill.") + """
+        </h2>
+    </div>
+    """, unsafe_allow_html=True)
 
 with col_form:
-    # Tabs Connexion / Inscription
-    tab_login, tab_register = st.tabs(
-        ["Connexion" if is_fr else "Login", 
-         "Inscription" if is_fr else "Register"]
-    )
+    st.markdown("<div style='padding-top: 20px;'></div>", unsafe_allow_html=True)
     
-    # ── Tab Connexion ────────────────────────────────────────────
-    with tab_login:
-        st.markdown("")
+    if st.session_state.auth_mode == "login":
+        st.markdown("<h3 style='text-align: center; color: #1E293B; margin-bottom: 24px;'>" + ("Bienvenue" if is_fr else "Welcome") + "</h3>", unsafe_allow_html=True)
+        
         with st.form("login_form"):
             email = st.text_input(
                 "Email",
@@ -106,17 +90,21 @@ with col_form:
                     st.error("Email ou mot de passe incorrect" if is_fr else "Wrong email or password")
         
         st.markdown("")
+        if st.button("Vous n'avez pas de compte ? S'inscrire" if is_fr else "Don't have an account? Register", use_container_width=True):
+            st.session_state.auth_mode = "register"
+            st.rerun()
+            
         st.markdown(
-            "<div style='text-align:center; color: rgba(255,255,255,0.4); font-size:13px;'>"
+            "<div style='text-align:center; color: #64748B; font-size:12px; margin-top: 16px;'>"
             + ("Comptes démo : demo@energai.ci / demo123 ou business@energai.ci / business123" 
                if is_fr else "Demo accounts: demo@energai.ci / demo123 or business@energai.ci / business123") +
             "</div>",
             unsafe_allow_html=True,
         )
     
-    # ── Tab Inscription ──────────────────────────────────────────
-    with tab_register:
-        st.markdown("")
+    else:
+        st.markdown("<h3 style='text-align: center; color: #1E293B; margin-bottom: 24px;'>" + ("Créer un compte" if is_fr else "Create an account") + "</h3>", unsafe_allow_html=True)
+        
         with st.form("register_form"):
             reg_nom = st.text_input(
                 "Nom complet" if is_fr else "Full name",
@@ -125,42 +113,17 @@ with col_form:
             reg_email = st.text_input(
                 "Email",
                 placeholder="vous@email.com" if is_fr else "you@email.com",
-                key="reg_email",
             )
             reg_password = st.text_input(
                 "Mot de passe" if is_fr else "Password",
                 type="password",
                 placeholder="••••••••",
-                key="reg_password",
             )
-            
-            # Choix du profil
-            st.markdown("### " + ("Choisissez votre profil" if is_fr else "Choose your profile"))
-            
-            col_part, col_biz = st.columns(2)
-            with col_part:
-                st.markdown("""
-                <div class="profile-card">
-                    <div class="profile-icon">Particulier</div>
-                    <div class="profile-title">""" + ("Particulier" if is_fr else "Individual") + """</div>
-                    <div class="profile-desc">""" + ("Maison, appartement" if is_fr else "Home, apartment") + """</div>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col_biz:
-                st.markdown("""
-                <div class="profile-card">
-                    <div class="profile-icon">Business</div>
-                    <div class="profile-title">Business</div>
-                    <div class="profile-desc">""" + ("Entreprise, commerce" if is_fr else "Business, shop") + """</div>
-                </div>
-                """, unsafe_allow_html=True)
             
             type_compte = st.radio(
                 "Type de compte" if is_fr else "Account type",
-                ["Particulier", "Business"],
+                ["Particulier", "Entreprise", "Industriel"],
                 horizontal=True,
-                label_visibility="collapsed",
             )
             
             reg_submitted = st.form_submit_button(
@@ -175,15 +138,21 @@ with col_form:
                     success, msg = register(reg_nom, reg_email, reg_password, type_compte)
                     if success:
                         st.success(msg)
+                        st.session_state.auth_mode = "login"
                         st.rerun()
                     else:
                         st.error(msg)
+                        
+        st.markdown("")
+        if st.button("Déjà un compte ? Se connecter" if is_fr else "Already have an account? Log in", use_container_width=True):
+            st.session_state.auth_mode = "login"
+            st.rerun()
 
 # ── Footer ───────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color: rgba(255,255,255,0.3); font-size:12px;'>"
-    "© 2025 EnergAI by NouanKany — Gestion intelligente d'énergie"
+    "<div style='text-align:center; color: #94A3B8; font-size:12px;'>"
+    "© 2025 NouanKanyAI — Gestion intelligente d'énergie"
     "</div>",
     unsafe_allow_html=True,
 )

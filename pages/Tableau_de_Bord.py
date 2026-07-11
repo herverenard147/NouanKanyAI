@@ -14,6 +14,7 @@ from components.styles import (
     inject_custom_css, savings_counter_html, metric_card_html,
     alert_item_html, progress_bar_html,
 )
+from components.sidebar import render_sidebar
 from components.prediction import (
     calculer_economies_totales, calculer_score_efficacite,
 )
@@ -32,36 +33,7 @@ user = require_auth()
 is_fr = st.session_state.get("langue", "FR") == "FR"
 
 # ── Sidebar ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## EnergAI")
-    st.markdown("---")
-    st.markdown(f"### {user['nom']}")
-    st.markdown(f"*{user['type_compte']}*")
-    
-    # Abonnement actif
-    abo = st.session_state.get("abonnement_actif", "decouverte")
-    abo_noms = {"decouverte": "Découverte", "essentiel": "Essentiel", "optimum": "Optimum", "business": "Business"}
-    st.markdown(f"**Formule**: {abo_noms.get(abo, abo)}")
-    
-    st.markdown("---")
-    
-    # Toggle langue
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("FR", use_container_width=True,
-                     type="primary" if is_fr else "secondary"):
-            st.session_state.langue = "FR"
-            st.rerun()
-    with col2:
-        if st.button("EN", use_container_width=True,
-                     type="primary" if not is_fr else "secondary"):
-            st.session_state.langue = "EN"
-            st.rerun()
-    
-    st.markdown("---")
-    if st.button("Se déconnecter" if is_fr else "Logout", use_container_width=True):
-        logout()
-        st.switch_page("app.py")
+render_sidebar()
 
 # ── Générer les données ──────────────────────────────────────────────────
 appareils = st.session_state.get("appareils", [])
@@ -190,7 +162,7 @@ if not historique.empty:
         mode='lines',
         line=dict(width=0),
         fill='tonexty',
-        fillcolor='rgba(0, 176, 255, 0.08)',
+        fillcolor='rgba(15, 114, 68, 0.08)',
         showlegend=False,
         hoverinfo='skip',
     ))
@@ -201,7 +173,7 @@ if not historique.empty:
         y=historique["prediction_kwh"],
         mode='lines',
         name='Prédiction' if is_fr else 'Prediction',
-        line=dict(color='#00B0FF', width=2, dash='dash'),
+        line=dict(color='#94A3B8', width=2, dash='dash'),
     ))
     
     # Courbe consommation réelle
@@ -210,8 +182,8 @@ if not historique.empty:
         y=historique["consommation_kwh"],
         mode='lines+markers',
         name='Consommation réelle' if is_fr else 'Actual consumption',
-        line=dict(color='#00E676', width=3),
-        marker=dict(size=4),
+        line=dict(color='#0F7244', width=3),
+        marker=dict(color='#0F7244', size=4),
     ))
     
     # Zones de surconsommation (rouge)
@@ -223,13 +195,13 @@ if not historique.empty:
             y=historique.loc[surconso_mask, "consommation_kwh"],
             mode='markers',
             name='Surconsommation' if is_fr else 'Overconsumption',
-            marker=dict(color='#FF5252', size=10, symbol='diamond'),
+            marker=dict(color='#DC2626', size=8, symbol='circle'),
         ))
     
     fig.update_layout(
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='rgba(255,255,255,0.7)', family='Inter'),
+        font=dict(color='#64748B', family='Inter'),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -239,12 +211,12 @@ if not historique.empty:
             font=dict(size=12),
         ),
         xaxis=dict(
-            gridcolor='rgba(255,255,255,0.05)',
+            gridcolor='#E2E8F0',
             showgrid=True,
         ),
         yaxis=dict(
             title="kWh",
-            gridcolor='rgba(255,255,255,0.05)',
+            gridcolor='#E2E8F0',
             showgrid=True,
         ),
         margin=dict(l=40, r=20, t=40, b=40),
@@ -313,7 +285,7 @@ with col_right:
 # ── Footer ────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color: rgba(255,255,255,0.3); font-size:12px;'>"
+    "<div style='text-align:center; color: #94A3B8; font-size:12px;'>"
     "EnergAI — Gestion intelligente d'énergie | Données mises à jour en temps réel"
     "</div>",
     unsafe_allow_html=True,

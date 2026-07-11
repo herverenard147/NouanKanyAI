@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 from components.auth import init_auth, require_auth, logout
 from components.styles import inject_custom_css, metric_card_html
+from components.sidebar import render_sidebar
 from components.recommendation import recommander_formule, calculer_economies_estimees
 from data.synthetic_data import get_categories, get_appareils_par_categorie
 
@@ -22,27 +23,7 @@ user = require_auth()
 is_fr = st.session_state.get("langue", "FR") == "FR"
 
 # ── Sidebar ──────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("## EnergAI")
-    st.markdown("---")
-    st.markdown(f"### {user['nom']}")
-    st.markdown(f"*{user['type_compte']}*")
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("FR", use_container_width=True,
-                     type="primary" if is_fr else "secondary"):
-            st.session_state.langue = "FR"
-            st.rerun()
-    with col2:
-        if st.button("EN", use_container_width=True,
-                     type="primary" if not is_fr else "secondary"):
-            st.session_state.langue = "EN"
-            st.rerun()
-    st.markdown("---")
-    if st.button("Se déconnecter" if is_fr else "Logout", use_container_width=True):
-        logout()
-        st.switch_page("app.py")
+render_sidebar()
 
 # ── Header ────────────────────────────────────────────────────────────────
 st.markdown(f"# {'Mes Appareils' if is_fr else 'My Devices'}")
@@ -188,12 +169,12 @@ if appareils:
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <span style="font-size: 24px; margin-right: 12px;">{a.get('icone', '')}</span>
-                            <strong style="font-size: 16px; color: #FFF;">{a['nom']}</strong>
-                            <span style="color: rgba(255,255,255,0.4); margin-left: 8px;">× {a['quantite']}</span>
+                            <strong style="font-size: 16px; color: #1E293B;">{a['nom']}</strong>
+                            <span style="color: #64748B; margin-left: 8px;">× {a['quantite']}</span>
                         </div>
                         <div style="text-align: right;">
-                            <div style="color: #00E676; font-weight: 700;">{conso:.1f} kWh/jour</div>
-                            <div style="color: rgba(255,255,255,0.5); font-size: 12px;">{a['puissance_kw']} kW · {a['heures_jour']}h/jour</div>
+                            <div style="color: #0F7244; font-weight: 700;">{conso:.1f} kWh/jour</div>
+                            <div style="color: #94A3B8; font-size: 12px;">{a['puissance_kw']} kW · {a['heures_jour']}h/jour</div>
                         </div>
                     </div>
                 </div>""",
@@ -219,19 +200,19 @@ if appareils:
     
     with col_reco:
         st.markdown(
-            f"""<div class="glass-card" style="border-color: rgba(0, 230, 118, 0.4);">
+            f"""<div class="glass-card" style="border-color: #0F7244; background: #F0FDF4;">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                     <span style="font-size: 32px;"></span>
                     <div>
-                        <div style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; color: #00E676;">
+                        <div style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; color: #0F7244;">
                             {'Formule' if is_fr else 'Plan'} {reco['formule_nom']} {'recommandée' if is_fr else 'recommended'}
                         </div>
-                        <div style="font-size: 13px; color: rgba(255,255,255,0.5);">
+                        <div style="font-size: 13px; color: #64748B;">
                             {'Confiance' if is_fr else 'Confidence'}: {reco['score_confiance']}%
                         </div>
                     </div>
                 </div>
-                <div style="font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.6;">
+                <div style="font-size: 14px; color: #475569; line-height: 1.6;">
                     {reco['raison']}
                 </div>
             </div>""",
@@ -240,15 +221,15 @@ if appareils:
     
     with col_eco:
         st.markdown(
-            f"""<div class="glass-card" style="text-align: center; border-color: rgba(0, 176, 255, 0.3);">
+            f"""<div class="glass-card" style="text-align: center; border-color: #E2E8F0;">
                 <div style="font-size: 28px; margin-bottom: 8px;"></div>
-                <div style="font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 800; color: #00E676;">
+                <div style="font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 800; color: #0F7244;">
                     {economies['economies_fcfa']:,.0f} FCFA
                 </div>
-                <div style="font-size: 13px; color: rgba(255,255,255,0.5);">
+                <div style="font-size: 13px; color: #64748B;">
                     {'économies estimées/mois' if is_fr else 'estimated savings/month'}
                 </div>
-                <div style="font-size: 14px; color: #00B0FF; margin-top: 8px;">
+                <div style="font-size: 14px; color: #0EA5E9; margin-top: 8px;">
                     -{economies['pct_economies']}% {'sur votre facture' if is_fr else 'on your bill'}
                 </div>
             </div>""",
@@ -267,10 +248,10 @@ else:
     st.markdown(
         f"""<div class="glass-card" style="text-align: center; padding: 40px;">
             <div style="font-size: 48px; margin-bottom: 16px;"></div>
-            <div style="font-size: 18px; color: #FFF; font-weight: 600;">
+            <div style="font-size: 18px; color: #1E293B; font-weight: 600;">
                 {'Aucun appareil déclaré' if is_fr else 'No devices declared'}
             </div>
-            <div style="color: rgba(255,255,255,0.5); margin-top: 8px;">
+            <div style="color: #64748B; margin-top: 8px;">
                 {'Ajoutez vos appareils ci-dessus pour obtenir des prédictions personnalisées' if is_fr else 'Add your devices above for personalized predictions'}
             </div>
         </div>""",
