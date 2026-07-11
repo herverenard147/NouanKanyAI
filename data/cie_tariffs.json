@@ -1,0 +1,109 @@
+{
+  "tranches": [
+    {
+      "nom": "Tranche Sociale",
+      "min_kwh": 0,
+      "max_kwh": 80,
+      "prix_kwh_fcfa": 36.24,
+      "prime_fixe_fcfa": 227,
+      "description": "Consommation sociale - ménages modestes"
+    },
+    {
+      "nom": "Tranche Domestique",
+      "min_kwh": 81,
+      "max_kwh": 150,
+      "prix_kwh_fcfa": 45.83,
+      "prime_fixe_fcfa": 1070,
+      "description": "Consommation domestique standard"
+    },
+    {
+      "nom": "Tranche Non Domestique",
+      "min_kwh": 151,
+      "max_kwh": 500,
+      "prix_kwh_fcfa": 68.44,
+      "prime_fixe_fcfa": 2413,
+      "description": "Consommation élevée ou petits commerces"
+    },
+    {
+      "nom": "Tranche Professionnelle",
+      "min_kwh": 501,
+      "max_kwh": 99999,
+      "prix_kwh_fcfa": 95.68,
+      "prime_fixe_fcfa": 10494,
+      "description": "Consommation professionnelle et industrielle"
+    }
+  ],
+  "taxes": {
+    "tva_pct": 18,
+    "taxe_electrification_pct": 1,
+    "redevance_regulateur_pct": 1
+  },
+  "formules_abonnement": [
+    {
+      "id": "decouverte",
+      "nom": "Découverte",
+      "prix_mensuel_fcfa": 0,
+      "cible": "Particulier",
+      "fonctionnalites": [
+        "Suivi basique de consommation",
+        "Jusqu'à 3 appareils",
+        "Rapport mensuel simple"
+      ],
+      "max_appareils": 3,
+      "assistant_ia": false,
+      "alertes_avancees": false
+    },
+    {
+      "id": "essentiel",
+      "nom": "Essentiel",
+      "prix_mensuel_fcfa": 2900,
+      "cible": "Particulier",
+      "fonctionnalites": [
+        "Suivi détaillé de consommation",
+        "Jusqu'à 10 appareils",
+        "Prédictions mensuelles",
+        "Alertes de seuil",
+        "Rapport hebdomadaire"
+      ],
+      "max_appareils": 10,
+      "assistant_ia": false,
+      "alertes_avancees": true
+    },
+    {
+      "id": "optimum",
+      "nom": "Optimum",
+      "prix_mensuel_fcfa": 7900,
+      "cible": "Particulier/Business",
+      "fonctionnalites": [
+        "Suivi en temps réel",
+        "Appareils illimités",
+        "Prédictions IA avancées",
+        "Assistant IA prescriptif",
+        "Alertes intelligentes",
+        "Rapport personnalisé",
+        "Détection d'anomalies"
+      ],
+      "max_appareils": 999,
+      "assistant_ia": true,
+      "alertes_avancees": true
+    },
+    {
+      "id": "business",
+      "nom": "Business",
+      "prix_mensuel_fcfa": 19900,
+      "cible": "Business",
+      "fonctionnalites": [
+        "Tout Optimum inclus",
+        "Multi-sites",
+        "API d'intégration",
+        "Support prioritaire 24/7",
+        "Dashboard entreprise",
+        "Export comptable",
+        "Audit énergétique IA"
+      ],
+      "max_appareils": 999,
+      "assistant_ia": true,
+      "alertes_avancees": true
+    }
+  ]
+}

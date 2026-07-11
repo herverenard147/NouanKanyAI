@@ -1,6 +1,13 @@
 [theme]
-primaryColor = "#00875A"          # Green Ecosira
-backgroundColor = "#0A0F1D"       # Sleek dark blue/slate
-secondaryBackgroundColor = "#151F32" # Lighter container background
-textColor = "#F1F5F9"             # Soft white text
+primaryColor = "#00E676"
+backgroundColor = "#1A1A2E"
+secondaryBackgroundColor = "#16213E"
+textColor = "#E0E0E0"
 font = "sans serif"
+
+[server]
+headless = true
+port = 8501
+
+[browser]
+gatherUsageStats = false
