@@ -11,6 +11,12 @@ export default function FacturationPage() {
   const [auditTrail, setAuditTrail] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notification, setNotification] = useState("");
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(""), 3000);
+  };
 
   useEffect(() => {
     const fetchFacturationData = async () => {
@@ -92,7 +98,7 @@ export default function FacturationPage() {
                   <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--primary)' }}>{gainShare.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} FCFA</div>
                 </div>
               </div>
-              <button className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px' }}>
+              <button onClick={() => showNotification("Génération de l'audit PDF en cours...")} className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', border: 'none', cursor: 'pointer' }}>
                 <Download size={16} /> Télécharger l'Audit
               </button>
             </div>
@@ -140,7 +146,7 @@ export default function FacturationPage() {
             </table>
             
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
-              <a href="#" style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); showNotification("Connexion à l'explorateur de noeuds en cours..."); }} style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
             </div>
           </div>
         </div>
@@ -171,7 +177,7 @@ export default function FacturationPage() {
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>CONFIG. SECOURS</div>
                 </div>
               </div>
-              <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>CHANGER</span>
+              <span onClick={() => showNotification("Ouverture des paramètres du portefeuille...")} style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>CHANGER</span>
             </div>
 
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '8px', textTransform: 'uppercase' }}>PROCHAIN CYCLE DE FACTURATION : 01 OCT 2026</div>
@@ -194,7 +200,7 @@ export default function FacturationPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 700, fontSize: '14px' }}>{inv.amount}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>TÉLÉCHARGER</div>
+                    <div onClick={() => showNotification(`Téléchargement de la facture ${inv.id}...`)} style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>TÉLÉCHARGER</div>
                   </div>
                 </div>
               ))}
@@ -238,6 +244,32 @@ export default function FacturationPage() {
 
         </div>
       </div>
+
+      {/* Custom Toast Notification */}
+      {notification && (
+        <div style={{ 
+          position: 'fixed', 
+          bottom: '32px', 
+          right: '32px', 
+          backgroundColor: 'var(--foreground)', 
+          color: 'var(--background)', 
+          padding: '16px 24px', 
+          borderRadius: '8px', 
+          fontWeight: 600, 
+          zIndex: 1000, 
+          boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <CheckCircle size={18} color="var(--primary)" />
+          {notification}
+        </div>
+      )}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 """
-EnergAI — Données synthétiques réalistes pour la démo.
+NouanKanyAI — Données synthétiques réalistes pour la démo.
 Génère des profils d'appareils, historiques de consommation et anomalies.
 """
 import numpy as np
