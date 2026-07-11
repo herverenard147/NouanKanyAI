@@ -1,0 +1,212 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Bot, Send, Sparkles, Zap, ShieldAlert, Loader2 } from 'lucide-react';
+
+export default function PredictionsPage() {
+  const [inputMessage, setInputMessage] = useState('');
+  const defaultMessage = { sender: 'ai', text: 'Bonjour ! Je suis votre Assistant IA EnergAI. Je suis connecté à vos modèles XGBoost et Isolation Forest en temps réel. Comment puis-je vous aider ?' };
+  const [messages, setMessages] = useState<any[]>([defaultMessage]);
+  const [isClient, setIsClient] = useState(false);
+  
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(true);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    setIsClient(true);
+    const savedChat = localStorage.getItem('energai_chat_history');
+    if (savedChat) {
+      try {
+        setMessages(JSON.parse(savedChat));
+      } catch (e) {
+        console.error("Erreur de chargement de l'historique", e);
+      }
+    }
+  }, []);
+
+  // Save chat history to localStorage on change
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem('energai_chat_history', JSON.stringify(messages));
+    }
+  }, [messages, isClient]);
+
+  // Fetch true recommendations from FastAPI
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        // On récupère d'abord l'état actuel depuis l'API globale
+        const machinesRes = await fetch('http://localhost:8000/api/machines');
+        const currentMachinesState = await machinesRes.json();
+
+        const response = await fetch('http://localhost:8000/api/recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentMachinesState)
+        });
+        
+        const data = await response.json();
+        if (data.recommendations) {
+          setRecommendations(data.recommendations);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des recommandations:", error);
+      } finally {
+        setLoadingRecs(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, []);
+
+  const handleSend = async () => {
+    if (!inputMessage.trim()) return;
+    
+    const userMsg = inputMessage;
+    setMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
+    setInputMessage('');
+    
+    // Add loading message
+    setMessages(prev => [...prev, { sender: 'ai', text: "..." }]);
+    
+    try {
+      // On récupère d'abord l'état actuel depuis l'API globale
+      const machinesRes = await fetch('http://localhost:8000/api/machines');
+      const currentMachinesState = await machinesRes.json();
+      
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMsg, context: currentMachinesState })
+      });
+      
+      const data = await response.json();
+      
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: data.response };
+        return newMsgs;
+      });
+    } catch (error) {
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { sender: 'ai', text: "Erreur de connexion a l'IA EnergAI." };
+        return newMsgs;
+      });
+    }
+  };
+
+  const getIconForType = (type: string, severity: string) => {
+    if (severity === 'critique') return <ShieldAlert size={20} color="#DC2626" />;
+    if (type === 'optimisation') return <Sparkles size={20} color="var(--primary)" />;
+    if (type === 'délestage') return <Zap size={20} color="var(--accent)" />;
+    return <Bot size={20} color="var(--primary)" />;
+  };
+
+  const getColorForSeverity = (severity: string) => {
+    if (severity === 'critique') return '#DC2626';
+    if (severity === 'modérée') return 'var(--accent)';
+    return 'var(--primary)';
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
+          <span style={{ color: 'var(--primary)' }}>Assistant IA</span> / Analyse & Chat
+        </div>
+        <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Votre Assistant Énergétique Intégré</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
+          L'IA analyse vos équipements en temps réel avec XGBoost et Isolation Forest pour générer des actions concrètes.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', height: '600px' }}>
+        
+        {/* Chat Interface */}
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ backgroundColor: 'var(--primary)', padding: '8px', borderRadius: '50%' }}><Bot color="#fff" size={20} /></div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '14px' }}>EnergAI Copilot</div>
+              <div style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600 }}>● En ligne et synchronisé (FastAPI)</div>
+            </div>
+          </div>
+          
+          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'var(--background-alt)' }}>
+            {messages.map((msg, idx) => (
+              <div key={idx} style={{ alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                <div style={{ 
+                  backgroundColor: msg.sender === 'user' ? 'var(--primary)' : 'var(--surface)', 
+                  color: msg.sender === 'user' ? '#fff' : 'var(--foreground)',
+                  padding: '12px 16px', borderRadius: '12px',
+                  border: msg.sender === 'ai' ? '1px solid var(--surface-border)' : 'none',
+                  fontSize: '14px', lineHeight: '1.5'
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{ padding: '16px', borderTop: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', display: 'flex', gap: '12px' }}>
+            <input 
+              type="text" 
+              placeholder="Demandez une analyse, un rapport, ou une prédiction..." 
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid var(--surface-border)', outline: 'none', backgroundColor: 'var(--background-alt)' }}
+            />
+            <button onClick={handleSend} style={{ backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '50%', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <Send size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Actionable Recommendations (FETCHED FROM API) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '8px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+            RECOMMANDATIONS DE L'IA ({recommendations.length})
+            {loadingRecs && <Loader2 size={16} className="animate-spin text-primary" />}
+          </h3>
+          
+          {!loadingRecs && recommendations.length === 0 ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+              Aucune recommandation pour le moment. Votre usine est optimale !
+            </div>
+          ) : (
+            recommendations.map((rec, idx) => {
+              const color = getColorForSeverity(rec.severity);
+              return (
+                <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${color}` }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div>{getIconForType(rec.type, rec.severity)}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '4px' }}>{rec.title}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+                        {rec.description}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        {rec.gain_fcfa > 0 ? (
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>GAIN ESTIMÉ : {rec.gain_fcfa.toLocaleString('fr-FR')} XOF</div>
+                        ) : (
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>ACTION CRITIQUE</div>
+                        )}
+                        <button className={rec.severity === 'critique' ? "btn-secondary" : "btn-primary"} 
+                                style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', borderColor: rec.severity === 'critique' ? '#DC2626' : '', color: rec.severity === 'critique' ? '#DC2626' : '' }}>
+                          {rec.action}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
