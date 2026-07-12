@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowUpRight, Zap, Target, Power, AlertTriangle, Bot } from 'lucide-react';
+import { ArrowUpRight, Zap, Target, Power, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
@@ -38,7 +38,7 @@ export default function DashboardPage() {
   // États pour les appareils venant de l'API
   const [machines, setMachines] = useState<any[]>([]);
   const [totalConso, setTotalConso] = useState(0);
-  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [economiesMois, setEconomiesMois] = useState(0);
 
@@ -82,10 +82,10 @@ export default function DashboardPage() {
             body: JSON.stringify(data)
           });
           const recData = await recRes.json();
-          if (recData.recommendations && recData.recommendations.length > 0) {
-            setAiSuggestion(recData.recommendations[0]);
+          if (recData.recommendations) {
+            setAlerts(recData.recommendations.filter((r: any) => r.type === 'alerte'));
           } else {
-            setAiSuggestion(null);
+            setAlerts([]);
           }
         }
       } catch (err) {
@@ -97,10 +97,6 @@ export default function DashboardPage() {
     const interval = setInterval(fetchMachines, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  const toggleAppareil = (machine_id: string) => {
-    console.log("Toggle", machine_id);
-  };
 
   if (!user) return null;
 
@@ -118,49 +114,65 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Alerte IA Premium Banner */}
-      {aiSuggestion && (
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'flex-start', 
-          gap: '16px', 
-          padding: '20px', 
-          background: aiSuggestion.type.includes('Surchauffe') 
-            ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(220, 38, 38, 0.02) 100%)' 
-            : 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%)',
-          border: `1px solid ${aiSuggestion.type.includes('Surchauffe') ? 'rgba(220, 62, 62, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`, 
-          borderLeft: `4px solid ${aiSuggestion.type.includes('Surchauffe') ? '#ef4444' : 'var(--accent)'}`,
-          borderRadius: '12px', 
+      {/* Carte des alertes IA actives */}
+      {alerts.length > 0 && (
+        <div style={{
+          padding: '20px',
+          background: 'linear-gradient(135deg, rgba(220, 38, 38, 0.08) 0%, rgba(220, 38, 38, 0.02) 100%)',
+          border: '1px solid rgba(220, 62, 62, 0.3)',
+          borderLeft: '4px solid #ef4444',
+          borderRadius: '12px',
           marginBottom: '32px',
           boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
           backdropFilter: 'blur(10px)'
         }}>
-          <div style={{ 
-            backgroundColor: aiSuggestion.type.includes('Surchauffe') ? 'var(--danger)' : 'var(--accent)', 
-            padding: '8px', 
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: `0 0 15px ${aiSuggestion.type.includes('Surchauffe') ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`
-          }}>
-            {aiSuggestion.type.includes('Surchauffe') ? <AlertTriangle size={18} color="#fff" /> : <Bot size={18} color="#fff" />}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                backgroundColor: 'var(--danger)',
+                padding: '8px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 15px rgba(239, 68, 68, 0.4)'
+              }}>
+                <AlertTriangle size={16} color="#fff" />
+              </div>
+              <div style={{ fontWeight: 700, color: '#f87171', fontSize: '15px' }}>
+                {alerts.length} alerte{alerts.length > 1 ? 's' : ''} active{alerts.length > 1 ? 's' : ''}
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/dashboard/appareils')}
+              className="btn-secondary"
+              style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#f87171', cursor: 'pointer' }}
+            >
+              Voir toutes les alertes
+            </button>
           </div>
-          <div>
-            <div style={{ 
-              fontWeight: 700, 
-              color: aiSuggestion.type.includes('Surchauffe') ? '#f87171' : 'var(--accent)', 
-              marginBottom: '6px', 
-              fontSize: '15px',
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px' 
-            }}>
-              {aiSuggestion.title}
-            </div>
-            <div style={{ color: 'var(--text-subtle)', fontSize: '14px', lineHeight: '1.5' }}>
-              {aiSuggestion.action}
-            </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {alerts.slice(0, 3).map((alert, idx) => (
+              <div key={idx} style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(239, 68, 68, 0.15)'
+              }}>
+                <div style={{ fontWeight: 700, color: 'var(--foreground)', fontSize: '13px', marginBottom: '4px' }}>
+                  {alert.title}
+                </div>
+                <div style={{ color: 'var(--text-subtle)', fontSize: '13px', lineHeight: '1.4' }}>
+                  {alert.action}
+                </div>
+              </div>
+            ))}
+            {alerts.length > 3 && (
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', paddingTop: '4px' }}>
+                + {alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''} alerte{alerts.length - 3 > 1 ? 's' : ''}
+              </div>
+            )}
           </div>
         </div>
       )}

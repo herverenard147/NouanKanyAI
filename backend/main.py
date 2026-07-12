@@ -14,7 +14,27 @@ import base64
 import joblib
 import os
 import uuid
+import requests
 from dotenv import load_dotenv
+
+# Session HTTP persistante (réutilise la connexion TCP/TLS vers Gemini au lieu
+# d'en rouvrir une à chaque appel, ce qui réduisait la marge avant timeout).
+_gemini_session = requests.Session()
+
+def call_gemini(payload: dict, timeout: int = 25, retries: int = 1) -> dict:
+    """Appelle l'API Gemini avec un léger mécanisme de retry sur timeout/erreur réseau."""
+    gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_api_key}"
+
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            resp = _gemini_session.post(url, json=payload, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            last_exc = e
+    raise last_exc
 
 from db import engine, Base, get_db
 import models_db as models
@@ -549,12 +569,6 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 def chat_with_gemini(req: ChatRequest):
-    import urllib.request
-    import json
-
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
-
     system_prompt = "Tu es NouanKanyAI Copilot, l'IA intelligente de l'application NouanKanyAI. Tu aides le responsable d'une usine ou d'un hotel a gerer sa consommation d'energie (electricite, machines). Reste professionnel, concis, et utilise le contexte fourni pour donner des reponses precises."
     context_str = f"Voici l'etat actuel de nos machines : {req.context}"
     full_prompt = f"{system_prompt}\n\n{context_str}\n\nQuestion de l'utilisateur : {req.message}"
@@ -564,16 +578,13 @@ def chat_with_gemini(req: ChatRequest):
         "generationConfig": {"temperature": 0.3}
     }
 
-    data = json.dumps(payload).encode("utf-8")
-    req_obj = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
-
     try:
-        with urllib.request.urlopen(req_obj, timeout=20) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            text = result['candidates'][0]['content']['parts'][0]['text']
-            return {"response": text}
+        result = call_gemini(payload, timeout=25, retries=1)
+        text = result['candidates'][0]['content']['parts'][0]['text']
+        return {"response": text}
     except Exception as e:
-        return {"response": f"Desole, je ne peux pas me connecter a l'IA pour le moment. Erreur: {str(e)}"}
+        print(f"[WARN] Gemini chat error: {e}")
+        return {"response": "Désolé, l'assistant IA met trop de temps à répondre pour le moment. Réessayez dans quelques instants."}
 
 @app.post("/api/machines/{machine_id}/analyze-media")
 async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -590,9 +601,6 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
     mime_type = file.content_type
 
     # 2. Appeler l'API Gemini
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
-
     prompt = (
         "Analyse cette image ou vidéo de l'équipement industriel. Détecte s'il y a une anomalie, un danger imminent, "
         "une fumée, un feu, une fuite, ou toute menace physique. Réponds strictement sous le format :\n"
@@ -617,56 +625,49 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
         "generationConfig": {"temperature": 0.2}
     }
 
-    import urllib.request
-    import json
-
-    data = json.dumps(payload).encode("utf-8")
-    req_obj = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
-
     try:
-        with urllib.request.urlopen(req_obj, timeout=30) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            text_response = result['candidates'][0]['content']['parts'][0]['text']
+        result = call_gemini(payload, timeout=40, retries=1)
+        text_response = result['candidates'][0]['content']['parts'][0]['text']
 
-            status = "NORMAL"
-            description = "Aucun danger détecté."
+        status = "NORMAL"
+        description = "Aucun danger détecté."
 
-            for line in text_response.split('\n'):
-                if line.startswith("STATUS:"):
-                    status = line.replace("STATUS:", "").strip()
-                elif line.startswith("DESCRIPTION:"):
-                    description = line.replace("DESCRIPTION:", "").strip()
+        for line in text_response.split('\n'):
+            if line.startswith("STATUS:"):
+                status = line.replace("STATUS:", "").strip()
+            elif line.startswith("DESCRIPTION:"):
+                description = line.replace("DESCRIPTION:", "").strip()
 
-            if "ALERTE" in status:
-                mach.status = "alerte"
-                db.add(models.SensorMetric(
-                    machine_id=mach.id,
-                    power_kw=float(mach.puissance_nominale_kw) * 1.3,
-                    temperature_c=85.0,
-                    vibration_hz=48.0,
-                    pressure_bar=5.0,
-                ))
-                db.add(models.AIAlert(
-                    machine_id=mach.id,
-                    type_alerte="Danger détecté par flux visuel",
-                    description=f"L'analyse du flux vidéo/photo a identifié une menace : {description}",
-                    action_recommandee="Inspectez l'équipement immédiatement et lancez la procédure de coupure d'urgence si nécessaire.",
-                    gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
-                    is_resolved=False,
-                ))
-                db.commit()
+        if "ALERTE" in status:
+            mach.status = "alerte"
+            db.add(models.SensorMetric(
+                machine_id=mach.id,
+                power_kw=float(mach.puissance_nominale_kw) * 1.3,
+                temperature_c=85.0,
+                vibration_hz=48.0,
+                pressure_bar=5.0,
+            ))
+            db.add(models.AIAlert(
+                machine_id=mach.id,
+                type_alerte="Danger détecté par flux visuel",
+                description=f"L'analyse du flux vidéo/photo a identifié une menace : {description}",
+                action_recommandee="Inspectez l'équipement immédiatement et lancez la procédure de coupure d'urgence si nécessaire.",
+                gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
+                is_resolved=False,
+            ))
+            db.commit()
 
-                return {
-                    "status": "ALERTE",
-                    "description": description,
-                    "message": f"Menace identifiée ! L'appareil {mach.nom} a été placé en état d'alerte de sécurité."
-                }
-            else:
-                return {
-                    "status": "NORMAL",
-                    "description": description,
-                    "message": "Le flux média a été analysé. Aucun danger visible n'a été détecté."
-                }
+            return {
+                "status": "ALERTE",
+                "description": description,
+                "message": f"Menace identifiée ! L'appareil {mach.nom} a été placé en état d'alerte de sécurité."
+            }
+        else:
+            return {
+                "status": "NORMAL",
+                "description": description,
+                "message": "Le flux média a été analysé. Aucun danger visible n'a été détecté."
+            }
     except Exception as e:
         # En cas d'erreur ou d'absence de clé valide, mode démo basé sur le nom du fichier
         print(f"[WARN] Gemini analyze error: {e}")
