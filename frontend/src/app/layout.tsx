@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'NouanKanyAI',
+  title: 'NouanKanyAI - NouanKanyAI',
   description: 'Gestion intelligente d\'énergie',
 };
 
