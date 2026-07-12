@@ -73,7 +73,7 @@ export default function SitesPage() {
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
             <span style={{ color: 'var(--primary)' }}>Infrastructure</span> / Gestion des Sites
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Sites Industriels</h1>
+          <h1 className="text-gradient" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>Sites Industriels</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
             Supervisez la consommation énergétique de l'ensemble de vos installations géographiques.
           </p>
@@ -85,17 +85,17 @@ export default function SitesPage() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {sites.map(site => (
-          <div key={site.id} className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px' }}>
+          <div key={site.id} className="glass-card glow-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
               <div style={{ 
-                backgroundColor: site.status === 'optimal' ? 'var(--primary-light)' : 'rgba(255, 214, 0, 0.1)', 
+                backgroundColor: 'var(--primary-light)', 
                 padding: '16px', borderRadius: '12px',
-                border: `1px solid ${site.status === 'optimal' ? 'var(--primary)' : 'var(--accent)'}`
+                border: '1px solid rgba(16, 185, 129, 0.25)'
               }}>
-                <Factory size={28} color={site.status === 'optimal' ? 'var(--primary)' : 'var(--accent)'} />
+                <Factory size={28} color="var(--primary)" />
               </div>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>{site.name}</h3>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px', color: 'var(--foreground)' }}>{site.name}</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '13px' }}>
                   <MapPin size={14} /> {site.location}
                 </div>
@@ -112,18 +112,18 @@ export default function SitesPage() {
               
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Appareils Connectés</div>
-                <div style={{ fontSize: '18px', fontWeight: 700 }}>{site.devices}</div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--foreground)' }}>{site.devices}</div>
               </div>
 
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Statut IA</div>
                 {site.alerts > 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#EF4444', fontWeight: 700, fontSize: '14px', backgroundColor: '#FEE2E2', padding: '4px 12px', borderRadius: '20px' }}>
-                    <AlertCircle size={16} /> {site.alerts} Alerte(s)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#EF4444', fontWeight: 700, fontSize: '13px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 12px', borderRadius: '20px' }}>
+                    <AlertCircle size={14} /> {site.alerts} Alerte(s)
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 700, fontSize: '14px', backgroundColor: 'var(--primary-light)', padding: '4px 12px', borderRadius: '20px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary)' }}></span> Optimal
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 700, fontSize: '13px', backgroundColor: 'var(--primary-dim)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '4px 12px', borderRadius: '20px' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary)' }}></span> Optimal
                   </div>
                 )}
               </div>
