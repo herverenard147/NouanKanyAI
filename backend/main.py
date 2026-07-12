@@ -609,15 +609,6 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
             }
         return {"status": "NORMAL", "description": "Aucune menace apparente détectée (Mode simulation)."}
 
-@app.post("/api/_seed/demo-users")
-def seed_demo_users(secret: str, n: int = 100, db: Session = Depends(get_db)):
-    """Endpoint temporaire pour générer des comptes de démonstration. À retirer après usage."""
-    if secret != os.environ.get("JWT_SECRET", ""):
-        raise HTTPException(status_code=403, detail="forbidden")
-    from seed_temp import run_seed, SHARED_PASSWORD
-    created = run_seed(db, n_users=n)
-    return {"count": len(created), "password": SHARED_PASSWORD, "users": created}
-
 if __name__ == '__main__':
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
