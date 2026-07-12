@@ -25,6 +25,13 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 if engine is not None:
     try:
         Base.metadata.create_all(bind=engine)
+        # create_all() ne modifie pas les tables déjà existantes : migration légère
+        # pour les colonnes ajoutées après coup (idempotent, sans Alembic).
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text(
+                "ALTER TABLE machines ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id)"
+            ))
         print("[OK] Connecté à PostgreSQL, tables synchronisées.")
     except Exception as e:
         print(f"[ERROR] Erreur PostgreSQL: {e}")
@@ -204,10 +211,10 @@ def add_site(site: NewSite, user_id: str = Depends(get_current_user_id), db: Ses
 # --- Machines ---
 
 @app.get("/api/machines")
-def get_machines(db: Session = Depends(get_db)):
-    """Retourne l'état de toutes les machines avec leurs dernières métriques."""
-    machines = db.query(models.Machine).all()
-    sites = db.query(models.Site).all()
+def get_machines(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Retourne l'état des machines de l'utilisateur connecté avec leurs dernières métriques."""
+    machines = db.query(models.Machine).filter(models.Machine.user_id == user_id).all()
+    sites = db.query(models.Site).filter(models.Site.user_id == user_id).all()
     site_map = {s.id: s.nom for s in sites}
 
     metrics = db.query(models.SensorMetric).order_by(models.SensorMetric.recorded_at.desc()).all()
@@ -234,9 +241,9 @@ def get_machines(db: Session = Depends(get_db)):
     return result
 
 @app.get("/api/facturation")
-def get_facturation(db: Session = Depends(get_db)):
+def get_facturation(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Retourne les données de facturation (calculées dynamiquement) et l'historique."""
-    machines = db.query(models.Machine).all()
+    machines = db.query(models.Machine).filter(models.Machine.user_id == user_id).all()
 
     total_power_kw = sum(m.puissance_nominale_kw for m in machines if m.status == "actif")
 
@@ -319,13 +326,6 @@ def get_admin_metrics(db: Session = Depends(get_db)):
                 "machines_count": user_machines_count.get(u.id, 0),
             })
 
-        recent_activities = [
-            {"user_name": "Stephy Koutouan", "action": "Connexion sécurisée", "target": "Console Administrateur", "timestamp": "12/07/2026 09:20"},
-            {"user_name": "Stephy Koutouan", "action": "Lancement d'un diagnostic d'urgence", "target": "Générateur Principal (GEN-001)", "timestamp": "12/07/2026 09:18"},
-            {"user_name": "John Oba", "action": "Téléchargement d'audit", "target": "Rapport Facture INV-2023-08", "timestamp": "12/07/2026 09:12"},
-            {"user_name": "Koffi Yao", "action": "Déconnexion", "target": "Portail Entreprise", "timestamp": "11/07/2026 18:45"}
-        ]
-
         return {
             "platform": {
                 "total_sites": total_sites,
@@ -335,7 +335,7 @@ def get_admin_metrics(db: Session = Depends(get_db)):
                 "revenue_xof": global_savings * 0.10  # 10% Gain-Share
             },
             "users": users,
-            "recent_activities": recent_activities,
+            "recent_activities": [],
             "ml_health": {
                 "xgboost_accuracy": 94.2,
                 "xgboost_mape": 5.8,  # Erreur absolue moyenne en %
@@ -359,8 +359,8 @@ class NewMachine(BaseModel):
     site_id: Optional[str] = None
 
 @app.post("/api/machines")
-def add_machine(machine: NewMachine, db: Session = Depends(get_db)):
-    """Ajoute des machines dans PostgreSQL."""
+def add_machine(machine: NewMachine, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Ajoute des machines pour l'utilisateur connecté."""
     added_machines = []
     for _ in range(machine.quantite):
         code = f"NEW-{uuid.uuid4().hex[:6].upper()}"
@@ -371,6 +371,7 @@ def add_machine(machine: NewMachine, db: Session = Depends(get_db)):
             status="actif",
             priority="moyenne",
             site_id=machine.site_id if machine.site_id else None,
+            user_id=user_id,
         )
         db.add(new_mach)
         db.commit()
@@ -399,9 +400,11 @@ def add_machine(machine: NewMachine, db: Session = Depends(get_db)):
     return {"status": "success", "machines": added_machines}
 
 @app.post("/api/machines/{machine_id}/simulate")
-def simulate_anomaly(machine_id: str, db: Session = Depends(get_db)):
-    """Simule une alerte sur une machine spécifique."""
-    mach = db.query(models.Machine).filter(models.Machine.code_interne == machine_id).first()
+def simulate_anomaly(machine_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Simule une alerte sur une machine spécifique appartenant à l'utilisateur connecté."""
+    mach = db.query(models.Machine).filter(
+        models.Machine.code_interne == machine_id, models.Machine.user_id == user_id
+    ).first()
     if not mach:
         return {"error": "Machine non trouvée"}
 
@@ -485,9 +488,11 @@ def chat_with_gemini(req: ChatRequest):
         return {"response": f"Desole, je ne peux pas me connecter a l'IA pour le moment. Erreur: {str(e)}"}
 
 @app.post("/api/machines/{machine_id}/analyze-media")
-async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Analyse un flux photo/vidéo d'une machine via Gemini Multimodal pour détecter une menace."""
-    mach = db.query(models.Machine).filter(models.Machine.code_interne == machine_id).first()
+    mach = db.query(models.Machine).filter(
+        models.Machine.code_interne == machine_id, models.Machine.user_id == user_id
+    ).first()
     if not mach:
         return {"error": "Machine non trouvée"}
 
@@ -603,6 +608,15 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), d
                 "message": f"Alerte de sécurité simulée sur l'appareil {mach.nom}."
             }
         return {"status": "NORMAL", "description": "Aucune menace apparente détectée (Mode simulation)."}
+
+@app.post("/api/_seed/demo-users")
+def seed_demo_users(secret: str, n: int = 100, db: Session = Depends(get_db)):
+    """Endpoint temporaire pour générer des comptes de démonstration. À retirer après usage."""
+    if secret != os.environ.get("JWT_SECRET", ""):
+        raise HTTPException(status_code=403, detail="forbidden")
+    from seed_temp import run_seed, SHARED_PASSWORD
+    created = run_seed(db, n_users=n)
+    return {"count": len(created), "password": SHARED_PASSWORD, "users": created}
 
 if __name__ == '__main__':
     import uvicorn

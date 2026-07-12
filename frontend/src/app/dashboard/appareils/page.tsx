@@ -44,7 +44,7 @@ export default function AppareilsPage() {
 
   const fetchMachines = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/machines`);
+      const res = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
       const data = await res.json();
       
       const mapped = data.map((m: any) => ({
@@ -91,7 +91,7 @@ export default function AppareilsPage() {
       }
       // On prend la première machine saine
       const target = appareils.find(a => a.status === 'actif') || appareils[0];
-      await fetch(`${API_URL}/api/machines/${target.id}/simulate`, { method: 'POST' });
+      await fetch(`${API_URL}/api/machines/${target.id}/simulate`, { method: 'POST', headers: authHeaders() });
       fetchMachines();
     } catch (err) {
       console.error(err);
@@ -285,7 +285,7 @@ export default function AppareilsPage() {
               try {
                 await fetch(`${API_URL}/api/machines`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: { 'Content-Type': 'application/json', ...authHeaders() },
                   body: JSON.stringify({ nom: name, power_kw: parseFloat(power), quantite: parseInt(quantity), site_id: siteId })
                 });
                 setIsModalOpen(false);
@@ -357,6 +357,7 @@ export default function AppareilsPage() {
                 try {
                   const res = await fetch(`${API_URL}/api/machines/${selectedMachineId}/analyze-media`, {
                     method: 'POST',
+                    headers: authHeaders(),
                     body: formData
                   });
                   const json = await res.json();

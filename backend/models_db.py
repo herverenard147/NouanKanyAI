@@ -50,6 +50,7 @@ class Machine(Base):
     status = Column(String, default="actif")
     priority = Column(String, default="moyenne")
     site_id = Column(UUID(as_uuid=True), ForeignKey("sites.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     site = relationship("Site", back_populates="machines")

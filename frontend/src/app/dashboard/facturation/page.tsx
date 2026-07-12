@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer } from 'recharts';
 import { Download, CheckCircle, Search, FileText } from 'lucide-react';
 import { API_URL } from '@/lib/api';
+import { authHeaders } from '@/lib/auth';
 
 export default function FacturationPage() {
   const [grossSavings, setGrossSavings] = useState(0);
@@ -22,7 +23,7 @@ export default function FacturationPage() {
   useEffect(() => {
     const fetchFacturationData = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/facturation`);
+        const res = await fetch(`${API_URL}/api/facturation`, { headers: authHeaders() });
         const data = await res.json();
         
         if (data) {

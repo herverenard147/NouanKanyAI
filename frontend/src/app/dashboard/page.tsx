@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Zap, Target, Power, AlertTriangle, Bot } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 // Génère un profil de consommation journalier réaliste à partir de la puissance totale des machines
@@ -55,7 +55,7 @@ export default function DashboardPage() {
     // Fetch live machines state
     const fetchMachines = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/machines`);
+        const res = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
         const data = await res.json();
         setMachines(data);
         

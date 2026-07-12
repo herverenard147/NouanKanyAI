@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Bot, Send, Sparkles, Zap, ShieldAlert, Loader2 } from 'lucide-react';
 import { API_URL } from '@/lib/api';
+import { authHeaders } from '@/lib/auth';
 
 export default function PredictionsPage() {
   const [inputMessage, setInputMessage] = useState('');
@@ -38,7 +39,7 @@ export default function PredictionsPage() {
     const fetchRecommendations = async () => {
       try {
         // On récupère d'abord l'état actuel depuis l'API globale
-        const machinesRes = await fetch(`${API_URL}/api/machines`);
+        const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
         const currentMachinesState = await machinesRes.json();
 
         const response = await fetch(`${API_URL}/api/recommend`, {
@@ -73,7 +74,7 @@ export default function PredictionsPage() {
     
     try {
       // On récupère d'abord l'état actuel depuis l'API globale
-      const machinesRes = await fetch(`${API_URL}/api/machines`);
+      const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
       const currentMachinesState = await machinesRes.json();
       
       const response = await fetch(`${API_URL}/api/chat`, {
@@ -106,7 +107,7 @@ export default function PredictionsPage() {
     setMessages(prev => [...prev, { sender: 'ai', text: "Lancement du protocole d'intervention en cours..." }]);
     
     try {
-      const machinesRes = await fetch(`${API_URL}/api/machines`);
+      const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
       const currentMachinesState = await machinesRes.json();
       
       const response = await fetch(`${API_URL}/api/chat`, {

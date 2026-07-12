@@ -22,7 +22,7 @@ export default function SitesPage() {
         const sitesData = sitesRes.ok ? await sitesRes.json() : [];
 
         // Récupérer toutes les machines
-        const machinesRes = await fetch(`${API_URL}/api/machines`);
+        const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
         const machinesData = machinesRes.ok ? await machinesRes.json() : [];
 
         const formattedSites = sitesData.map((s: any) => {
