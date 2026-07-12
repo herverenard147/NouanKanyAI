@@ -5,10 +5,19 @@ import { useRouter } from 'next/navigation';
 import { signUp, signIn, getCurrentUser } from '@/lib/auth';
 import Image from 'next/image';
 
-const CAROUSEL_BACKGROUNDS = [
-  '/hero_energy_control_1783840324094.png',
-  '/hero_data_analytics_1783840340611.png',
-  '/hero_ai_automation_1783840362282.png'
+const HERO_SLIDES = [
+  {
+    image: '/hero_energy_control_1783840324094.png',
+    title: "Le Futur de l'Énergie",
+    subtitle: 'Optimisez Votre Consommation, Maximisez Vos Économies.',
+    desc: "NouanKanyAI est votre plateforme de gestion énergétique intelligente. Reprenez le contrôle de vos installations électriques : analysez votre consommation en temps réel, identifiez les gaspillages et laissez-nous automatiser vos équipements pour une rentabilité maximale.",
+  },
+  {
+    image: '/hero_ai_automation_1783840362282.png',
+    title: 'Une IA qui Surveille Votre Réseau 24/7',
+    subtitle: "Détectez les Anomalies Avant qu'elles ne Coûtent Cher.",
+    desc: "Nos modèles de Machine Learning (XGBoost, Isolation Forest) analysent en continu vos machines et votre infrastructure électrique pour anticiper les pannes, prévenir les surchauffes et sécuriser votre production.",
+  },
 ];
 
 export default function Home() {
@@ -42,7 +51,7 @@ export default function Home() {
     if (showAuthModal) return; 
     
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % CAROUSEL_BACKGROUNDS.length);
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 6000); // 6 seconds per slide
     
     return () => clearInterval(interval);
@@ -77,8 +86,10 @@ export default function Home() {
     try {
       if (authMode === 'register') {
         await signUp(email, password, nom, typeCompte);
-        showToast("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
-        setAuthMode('login');
+        showToast("Compte créé avec succès ! Redirection en cours...");
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1200);
       } else {
         await signIn(email, password);
         showToast("Connexion réussie ! Redirection en cours...");
@@ -96,16 +107,16 @@ export default function Home() {
   return (
     <div className="hero-wrapper">
       {/* Background Images Carousel */}
-      {CAROUSEL_BACKGROUNDS.map((bgImage, index) => (
-        <div 
-          key={`bg-${index}`} 
+      {HERO_SLIDES.map((slide, index) => (
+        <div
+          key={`bg-${index}`}
           className={`hero-bg ${index === currentSlide ? 'active' : ''}`}
         >
-          <Image 
-            src={bgImage} 
-            alt={`Background ${index}`} 
-            fill 
-            style={{ objectFit: 'cover' }} 
+          <Image
+            src={slide.image}
+            alt={slide.title}
+            fill
+            style={{ objectFit: 'cover' }}
             priority={index === 0}
           />
         </div>
@@ -148,10 +159,10 @@ export default function Home() {
               NouankanyAI
             </span>
           </div>
-          <h1 className="hero-title">Le Futur de l'Énergie</h1>
-          <h2 className="hero-subtitle">Optimisez Votre Consommation, Maximisez Vos Économies.</h2>
+          <h1 className="hero-title">{HERO_SLIDES[currentSlide].title}</h1>
+          <h2 className="hero-subtitle">{HERO_SLIDES[currentSlide].subtitle}</h2>
           <p className="hero-desc">
-            NouanKanyAI est votre plateforme de gestion énergétique intelligente. Reprenez le contrôle de vos installations : analysez vos données avec une précision inégalée, identifiez les gaspillages et laissez-nous automatiser vos équipements pour une rentabilité maximale sans compromettre la productivité.
+            {HERO_SLIDES[currentSlide].desc}
           </p>
           <div className="hero-actions">
             <button className="btn-glow" onClick={() => openAuthModal('register')}>
@@ -163,7 +174,7 @@ export default function Home() {
 
       {/* Carousel Indicators */}
       <div className="hero-indicators">
-        {CAROUSEL_BACKGROUNDS.map((_, index) => (
+        {HERO_SLIDES.map((_, index) => (
           <div 
             key={index} 
             className={`hero-dot ${index === currentSlide ? 'active' : ''}`}
@@ -250,7 +261,7 @@ export default function Home() {
             )}
 
             <button type="submit" className="btn-glow" style={{ marginTop: '8px' }} disabled={loading}>
-              {loading ? 'Chargement...' : (authMode === 'login' ? 'Accéder au panneau de contrôle' : 'Créer mon espace industriel')}
+              {loading ? 'Chargement...' : (authMode === 'login' ? 'Accéder au panneau de contrôle' : 'Créer mon espace')}
             </button>
           </form>
 
