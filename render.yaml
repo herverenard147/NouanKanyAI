@@ -1,0 +1,49 @@
+services:
+  # --- Backend : API FastAPI (ML + Supabase + Gemini) ---
+  - type: web
+    name: nouankanyai-backend
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Secrets réels à saisir dans le dashboard Render (jamais committés) :
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ACCESS_TOKEN
+        sync: false
+      # URL complète du frontend déployé (ex: https://nouankanyai-frontend.onrender.com),
+      # à renseigner après le premier déploiement du service frontend (autorise le CORS).
+      - key: FRONTEND_URL
+        sync: false
+
+  # --- Frontend : Next.js 15 ---
+  - type: web
+    name: nouankanyai-frontend
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # URL complète du backend déployé (ex: https://nouankanyai-backend.onrender.com),
+      # à renseigner après le premier déploiement du service backend.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      # Clé anonyme publique Supabase (sûre à exposer côté client) et URL du projet.
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false

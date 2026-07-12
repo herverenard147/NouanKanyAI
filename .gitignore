@@ -1,0 +1,21 @@
+# Secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node / Next.js (frontend/.gitignore handles env files/build output already)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# OS
+.DS_Store
