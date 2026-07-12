@@ -479,7 +479,7 @@ def chat_with_gemini(req: ChatRequest):
     req_obj = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
     
     try:
-        with urllib.request.urlopen(req_obj) as response:
+        with urllib.request.urlopen(req_obj, timeout=20) as response:
             result = json.loads(response.read().decode("utf-8"))
             text = result['candidates'][0]['content']['parts'][0]['text']
             return {"response": text}
@@ -507,7 +507,7 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...)):
     
     # 3. Appeler l'API Gemini
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
     
     prompt = (
         "Analyse cette image ou vidéo de l'équipement industriel. Détecte s'il y a une anomalie, un danger imminent, "
@@ -540,7 +540,7 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...)):
     req_obj = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
     
     try:
-        with urllib.request.urlopen(req_obj) as response:
+        with urllib.request.urlopen(req_obj, timeout=30) as response:
             result = json.loads(response.read().decode("utf-8"))
             text_response = result['candidates'][0]['content']['parts'][0]['text']
             
