@@ -3,10 +3,11 @@ main.py — API FastAPI pour exposer les modèles d'IA au frontend React.
 Endpoints: /api/predict, /api/anomaly, /api/recommend
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+import base64
 import joblib
 import os
 import uuid
@@ -100,6 +101,15 @@ def get_machines():
     machines_res = supabase.table("machines").select("*").execute()
     metrics_res = supabase.table("sensor_metrics").select("*").order("recorded_at", desc=True).execute()
     
+    # Récupérer les sites pour faire l'association
+    site_map = {}
+    try:
+        sites_res = supabase.table("sites").select("id, nom").execute()
+        if sites_res.data:
+            site_map = {s["id"]: s["nom"] for s in sites_res.data}
+    except Exception as e:
+        print(f"[WARN] Erreur récupération sites: {e}")
+        
     metrics_map = {}
     for m in metrics_res.data:
         if m["machine_id"] not in metrics_map:
@@ -113,6 +123,8 @@ def get_machines():
         result.append({
             "machine_id": mach["code_interne"],
             "nom": mach["nom"],
+            "site_id": mach.get("site_id"),
+            "site_nom": site_map.get(mach.get("site_id"), "Non associé"),
             "power_kw": metric.get("power_kw", mach["puissance_nominale_kw"]),
             "temperature_c": metric.get("temperature_c", 25.0),
             "vibration_hz": metric.get("vibration_hz", 1.0),
@@ -307,10 +319,31 @@ def get_admin_metrics():
     except Exception as e:
         return {"error": str(e)}
 
+class NewSite(BaseModel):
+    nom: str
+    localisation: str
+    user_id: str
+
+@app.post("/api/sites")
+def add_site(site: NewSite):
+    """Ajoute un site dans Supabase (bypasse RLS)."""
+    if not supabase: return {"error": "Supabase not connected"}
+    
+    res = supabase.table("sites").insert({
+        "nom": site.nom,
+        "localisation": site.localisation,
+        "user_id": site.user_id
+    }).execute()
+    
+    if res.data:
+        return res.data[0]
+    return {"error": "Failed to insert site"}
+
 class NewMachine(BaseModel):
     nom: str
     power_kw: float
     quantite: Optional[int] = 1
+    site_id: Optional[str] = None
 
 @app.post("/api/machines")
 def add_machine(machine: NewMachine):
@@ -320,13 +353,17 @@ def add_machine(machine: NewMachine):
     added_machines = []
     for _ in range(machine.quantite):
         code = f"NEW-{uuid.uuid4().hex[:6].upper()}"
-        res = supabase.table("machines").insert({
+        insert_data = {
             "code_interne": code,
             "nom": machine.nom,
             "puissance_nominale_kw": machine.power_kw,
             "status": "actif",
             "priority": "moyenne"
-        }).execute()
+        }
+        if machine.site_id:
+            insert_data["site_id"] = machine.site_id
+            
+        res = supabase.table("machines").insert(insert_data).execute()
         
         if res.data:
             new_mach = res.data[0]
@@ -441,6 +478,139 @@ def chat_with_gemini(req: ChatRequest):
             return {"response": text}
     except Exception as e:
         return {"response": f"Desole, je ne peux pas me connecter a l'IA pour le moment. Erreur: {str(e)}"}
+
+@app.post("/api/machines/{machine_id}/analyze-media")
+async def analyze_machine_media(machine_id: str, file: UploadFile = File(...)):
+    """Analyse un flux photo/vidéo d'une machine via Gemini Multimodal pour détecter une menace."""
+    if not supabase: 
+        return {"error": "Supabase non connecté"}
+        
+    # 1. Vérifier si la machine existe
+    res = supabase.table("machines").select("*").eq("code_interne", machine_id).execute()
+    if not res.data:
+        return {"error": "Machine non trouvée"}
+        
+    mach = res.data[0]
+    mach_uuid = mach["id"]
+    
+    # 2. Lire le fichier et l'encoder en base64
+    file_bytes = await file.read()
+    base64_data = base64.b64encode(file_bytes).decode("utf-8")
+    mime_type = file.content_type
+    
+    # 3. Appeler l'API Gemini
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    prompt = (
+        "Analyse cette image ou vidéo de l'équipement industriel. Détecte s'il y a une anomalie, un danger imminent, "
+        "une fumée, un feu, une fuite, ou toute menace physique. Réponds strictement sous le format :\n"
+        "STATUS: [ALERTE ou NORMAL]\n"
+        "DESCRIPTION: [Une description concise en français du problème détecté, ou 'Tout est en ordre' si NORMAL]"
+    )
+    
+    payload = {
+        "contents": [{
+            "parts": [
+                {
+                    "inlineData": {
+                        "mimeType": mime_type,
+                        "data": base64_data
+                    }
+                },
+                {
+                    "text": prompt
+                }
+            ]
+        }],
+        "generationConfig": {"temperature": 0.2}
+    }
+    
+    import urllib.request
+    import json
+    
+    data = json.dumps(payload).encode("utf-8")
+    req_obj = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+    
+    try:
+        with urllib.request.urlopen(req_obj) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            text_response = result['candidates'][0]['content']['parts'][0]['text']
+            
+            # Analyser la réponse
+            status = "NORMAL"
+            description = "Aucun danger détecté."
+            
+            for line in text_response.split('\n'):
+                if line.startswith("STATUS:"):
+                    status = line.replace("STATUS:", "").strip()
+                elif line.startswith("DESCRIPTION:"):
+                    description = line.replace("DESCRIPTION:", "").strip()
+                    
+            if "ALERTE" in status:
+                # Mettre la machine en état d'alerte dans la base de données
+                supabase.table("machines").update({"status": "alerte"}).eq("id", mach_uuid).execute()
+                
+                # Insérer une métrique anormale correspondante
+                supabase.table("sensor_metrics").insert({
+                    "machine_id": mach_uuid,
+                    "power_kw": float(mach["puissance_nominale_kw"]) * 1.3,
+                    "temperature_c": 85.0,
+                    "vibration_hz": 48.0,
+                    "pressure_bar": 5.0
+                }).execute()
+                
+                # Insérer l'alerte correspondante
+                supabase.table("ai_alerts").insert({
+                    "machine_id": mach_uuid,
+                    "type_alerte": "Danger détecté par flux visuel",
+                    "description": f"L'analyse du flux vidéo/photo a identifié une menace : {description}",
+                    "action_recommandee": "Inspectez l'équipement immédiatement et lancez la procédure de coupure d'urgence si nécessaire.",
+                    "gain_estime_fcfa": float(mach["puissance_nominale_kw"]) * 100 * 24 * 5,
+                    "is_resolved": False
+                }).execute()
+                
+                return {
+                    "status": "ALERTE",
+                    "description": description,
+                    "message": f"Menace identifiée ! L'appareil {mach['nom']} a été placé en état d'alerte de sécurité."
+                }
+            else:
+                return {
+                    "status": "NORMAL",
+                    "description": description,
+                    "message": "Le flux média a été analysé. Aucun danger visible n'a été détecté."
+                }
+    except Exception as e:
+        # En cas d'erreur ou d'absence de clé valide, mode démo basé sur le nom du fichier
+        print(f"[WARN] Gemini analyze error: {e}")
+        filename_lower = file.filename.lower()
+        if any(w in filename_lower for w in ["fire", "feu", "smoke", "danger", "fuite", "leak"]):
+            # Mettre en alerte
+            supabase.table("machines").update({"status": "alerte"}).eq("id", mach_uuid).execute()
+            supabase.table("sensor_metrics").insert({
+                "machine_id": mach_uuid,
+                "power_kw": float(mach["puissance_nominale_kw"]) * 1.3,
+                "temperature_c": 90.0,
+                "vibration_hz": 45.0,
+                "pressure_bar": 4.5
+            }).execute()
+            
+            supabase.table("ai_alerts").insert({
+                "machine_id": mach_uuid,
+                "type_alerte": "Simulation de danger visuel",
+                "description": f"Incident simulé suite au chargement du fichier de menace : {file.filename}",
+                "action_recommandee": "Vérifiez les capteurs et l'alarme incendie.",
+                "gain_estime_fcfa": float(mach["puissance_nominale_kw"]) * 100 * 24 * 5,
+                "is_resolved": False
+            }).execute()
+            
+            return {
+                "status": "ALERTE",
+                "description": f"Menace simulée détectée (Fichier: {file.filename}).",
+                "message": f"Alerte de sécurité simulée sur l'appareil {mach['nom']}."
+            }
+        return {"status": "NORMAL", "description": "Aucune menace apparente détectée (Mode simulation)."}
 
 if __name__ == '__main__':
     import uvicorn

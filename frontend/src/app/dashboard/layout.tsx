@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -49,19 +50,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="sidebar">
         {/* Logo */}
         <div style={{ padding: '0 20px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Zap size={18} color="#fff" />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Image 
+              src="/NouankanyAI.png" 
+              alt="NouanKanyAI Logo" 
+              width={44} 
+              height={44} 
+              style={{ objectFit: 'contain' }} 
+            />
             <div>
-              <div style={{ color: '#e2e8f0', fontSize: '15px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
-                NouanKanyAI
+              <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.01em' }}>
+                NouankanyAI
               </div>
-              <div style={{ fontSize: '9px', fontWeight: 700, color: '#10b981', letterSpacing: '0.1em' }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: '#10b981', letterSpacing: '0.08em' }}>
                 ENERGY PLATFORM
               </div>
             </div>

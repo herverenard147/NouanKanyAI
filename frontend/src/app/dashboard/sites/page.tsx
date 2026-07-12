@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Factory, MapPin, Activity, AlertCircle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function SitesPage() {
+  const router = useRouter();
   const [sites, setSites] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
 
@@ -13,18 +15,31 @@ export default function SitesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
-        const { data } = await supabase.from('sites').select('*').eq('user_id', user.id);
-        if (data) {
-          // Transform to match UI expectation
-          const formattedSites = data.map(s => ({
-            id: s.id,
-            name: s.nom,
-            location: s.localisation,
-            status: 'optimal',
-            power: '0.0 kW', // We could fetch machines per site, but let's keep it simple
-            devices: 0,
-            alerts: 0
-          }));
+        
+        // Récupérer les sites de l'utilisateur
+        const { data: sitesData } = await supabase.from('sites').select('*').eq('user_id', user.id);
+        
+        // Récupérer toutes les machines
+        const { data: machinesData } = await supabase.from('machines').select('*');
+        
+        if (sitesData) {
+          const formattedSites = sitesData.map(s => {
+            // Filtrer les machines appartenant à ce site
+            const siteMachines = machinesData ? machinesData.filter((m: any) => m.site_id === s.id) : [];
+            const activeMachines = siteMachines.filter((m: any) => m.status === 'actif');
+            const totalPower = activeMachines.reduce((sum: number, m: any) => sum + parseFloat(m.puissance_nominale_kw || 0), 0);
+            const alertsCount = siteMachines.filter((m: any) => m.status === 'alerte').length;
+
+            return {
+              id: s.id,
+              name: s.nom,
+              location: s.localisation,
+              status: alertsCount > 0 ? 'alerte' : 'optimal',
+              power: `${totalPower.toFixed(1)} kW`,
+              devices: siteMachines.length,
+              alerts: alertsCount
+            };
+          });
           setSites(formattedSites);
         }
       }
@@ -40,25 +55,34 @@ export default function SitesPage() {
     e.preventDefault();
     if (!newSiteName || !newSiteLocation || !user) return;
     
-    const { data, error } = await supabase.from('sites').insert({
-      nom: newSiteName,
-      localisation: newSiteLocation,
-      user_id: user.id
-    }).select();
-    
-    if (data && data.length > 0) {
-      const newSite = {
-        id: data[0].id,
-        name: data[0].nom,
-        location: data[0].localisation,
-        status: 'optimal',
-        power: '0.0 kW',
-        devices: 0,
-        alerts: 0
-      };
-      setSites([...sites, newSite]);
-    } else if (error) {
-      console.error("Failed to add site:", error);
+    try {
+      const res = await fetch('http://localhost:8000/api/sites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: newSiteName,
+          localisation: newSiteLocation,
+          user_id: user.id
+        })
+      });
+      const data = await res.json();
+      
+      if (data && !data.error) {
+        const newSite = {
+          id: data.id,
+          name: data.nom,
+          location: data.localisation,
+          status: 'optimal',
+          power: '0.0 kW',
+          devices: 0,
+          alerts: 0
+        };
+        setSites([...sites, newSite]);
+      } else {
+        console.error("Failed to add site:", data.error || data);
+      }
+    } catch (err) {
+      console.error("Failed to add site:", err);
     }
     
     setNewSiteName('');
@@ -128,7 +152,11 @@ export default function SitesPage() {
                 )}
               </div>
               
-              <button className="btn-secondary" style={{ width: 'auto' }}>
+              <button 
+                className="btn-secondary" 
+                style={{ width: 'auto' }}
+                onClick={() => router.push(`/dashboard/appareils?siteId=${site.id}`)}
+              >
                 Gérer le site
               </button>
             </div>

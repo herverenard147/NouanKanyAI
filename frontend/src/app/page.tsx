@@ -156,6 +156,19 @@ export default function Home() {
       {/* Main Content (Fixed) */}
       <div className="hero-content">
         <div className="glass-hero-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '14px', marginBottom: '28px' }}>
+            <Image 
+              src="/NouankanyAI.png" 
+              alt="NouanKanyAI Logo" 
+              width={56} 
+              height={56} 
+              style={{ objectFit: 'contain' }} 
+              priority
+            />
+            <span style={{ fontSize: '32px', fontWeight: 800, fontFamily: 'Outfit, sans-serif', color: '#fff', letterSpacing: '-0.02em' }}>
+              NouankanyAI
+            </span>
+          </div>
           <h1 className="hero-title">Le Futur de l'Énergie</h1>
           <h2 className="hero-subtitle">Optimisez Votre Consommation, Maximisez Vos Économies.</h2>
           <p className="hero-desc">

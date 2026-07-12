@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Activity, AlertTriangle, ShieldCheck, Zap, RotateCcw, ActivitySquare, AlertOctagon } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function AppareilsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const siteParam = searchParams.get('siteId');
   const [appareils, setAppareils] = useState<any[]>([]);
+  const [sites, setSites] = useState<any[]>([]);
   const [totalPower, setTotalPower] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -14,11 +18,28 @@ export default function AppareilsPage() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
   };
+
+  const fetchSites = async () => {
+    try {
+      const { data } = await supabase.from('sites').select('*');
+      if (data) setSites(data);
+    } catch (e) {
+      console.error("Erreur lors de la récupération des sites", e);
+    }
+  };
+
   useEffect(() => {
     fetchMachines();
+    fetchSites();
     const interval = setInterval(fetchMachines, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (siteParam) {
+      setFilterSiteId(siteParam);
+    }
+  }, [siteParam]);
 
   const fetchMachines = async () => {
     try {
@@ -28,6 +49,8 @@ export default function AppareilsPage() {
       const mapped = data.map((m: any) => ({
         id: m.machine_id,
         nom: m.nom,
+        site_id: m.site_id,
+        site_nom: m.site_nom || 'Non associé',
         status: m.status,
         power: m.status === 'actif' ? `${m.power_kw} kW` : 'N/A',
         power_raw: m.power_kw,
@@ -51,6 +74,12 @@ export default function AppareilsPage() {
   };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [analyzingMedia, setAnalyzingMedia] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [selectedMachineId, setSelectedMachineId] = useState('');
+  const [filterSiteId, setFilterSiteId] = useState('');
 
   // Pour la simulation d'alerte (déclenche une alerte sur une machine aléatoire/la première)
   const triggerFakeAlert = async () => {
@@ -68,6 +97,10 @@ export default function AppareilsPage() {
     }
   };
 
+  const filteredAppareils = filterSiteId 
+    ? appareils.filter(app => app.site_id === filterSiteId)
+    : appareils;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
@@ -78,10 +111,13 @@ export default function AppareilsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn-secondary" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', borderColor: 'var(--primary)', color: 'var(--foreground)' }} onClick={() => { fetchSites(); setIsMediaModalOpen(true); }}>
+            📷 Analyser Flux Vidéo (IA)
+          </button>
           <button className="btn-secondary" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626', borderColor: '#FCA5A5' }} onClick={triggerFakeAlert}>
             <AlertTriangle size={18} /> Simuler Capteur (Alerte)
           </button>
-          <button className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }} onClick={() => setIsModalOpen(true)}>
+          <button className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }} onClick={() => { fetchSites(); setIsModalOpen(true); }}>
             <Plus size={18} /> Ajouter un Équipement
           </button>
         </div>
@@ -122,9 +158,39 @@ export default function AppareilsPage() {
         </div>
       </div>
 
+      {/* Filters Toolbar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'rgba(255,255,255,0.01)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>Filtrer par Site :</span>
+          <select 
+            value={filterSiteId} 
+            onChange={(e) => setFilterSiteId(e.target.value)}
+            style={{ 
+              backgroundColor: '#1e293b', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              color: '#fff', 
+              borderRadius: '8px', 
+              padding: '6px 16px', 
+              fontSize: '13px', 
+              fontWeight: 600,
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="">Tous les sites</option>
+            {sites.map(s => (
+              <option key={s.id} value={s.id}>{s.nom}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>
+          Affichage de <strong style={{ color: 'var(--foreground)' }}>{filteredAppareils.length}</strong> sur <strong>{appareils.length}</strong> équipements
+        </div>
+      </div>
+
       {/* Equipment Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-        {appareils.map((app) => (
+        {filteredAppareils.map((app) => (
           <div key={app.id} className="glass-card" style={{ 
             padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column',
             borderTop: `4px solid ${app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? 'var(--danger)' : 'var(--surface-border)'}`,
@@ -141,6 +207,7 @@ export default function AppareilsPage() {
                     </div>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--foreground)' }}>{app.nom}</h3>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: 500 }}>📍 Site : {app.site_nom}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>ID Actif: #{app.id}</div>
                 </div>
                 <div>{app.icon}</div>
@@ -197,7 +264,7 @@ export default function AppareilsPage() {
       {/* Modal d'ajout d'appareil */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-card" style={{ width: '400px', backgroundColor: 'var(--surface)', padding: '24px' }}>
+          <div className="glass-card" style={{ width: '400px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 1001, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Ajouter un Équipement</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -211,13 +278,14 @@ export default function AppareilsPage() {
               const name = formData.get('nom') as string;
               const power = formData.get('puissance') as string;
               const quantity = formData.get('quantite') as string;
-              if(!name || !power || !quantity) return;
+              const siteId = formData.get('site_id') as string;
+              if(!name || !power || !quantity || !siteId) return;
 
               try {
                 await fetch('http://localhost:8000/api/machines', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ nom: name, power_kw: parseFloat(power), quantite: parseInt(quantity) })
+                  body: JSON.stringify({ nom: name, power_kw: parseFloat(power), quantite: parseInt(quantity), site_id: siteId })
                 });
                 setIsModalOpen(false);
                 fetchMachines(); // Refresh immediately
@@ -228,6 +296,21 @@ export default function AppareilsPage() {
               <div className="input-group">
                 <label className="input-label">Nom de l'équipement</label>
                 <input type="text" name="nom" className="input-field" placeholder="Ex: Turbine-Beta-02" required />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Associer au Site</label>
+                <select name="site_id" className="input-field" required style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}>
+                  <option value="">-- Sélectionner un site --</option>
+                  {sites.map(s => (
+                    <option key={s.id} value={s.id}>{s.nom} ({s.localisation})</option>
+                  ))}
+                </select>
+                {sites.length === 0 && (
+                  <div style={{ fontSize: '11px', color: '#F59E0B', marginTop: '6px' }}>
+                    ⚠ Aucun site créé. Allez dans l'onglet <strong>Sites</strong> pour en créer un d'abord.
+                  </div>
+                )}
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -246,6 +329,147 @@ export default function AppareilsPage() {
                 <button type="submit" className="btn-primary">Ajouter</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'analyse multimédia */}
+      {isMediaModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="glass-card" style={{ width: '450px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 1001, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Détecteur de Menaces par Flux Média</h2>
+              <button onClick={() => { setIsMediaModalOpen(false); setAnalysisResult(null); setMediaFile(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                ✖
+              </button>
+            </div>
+
+            {!analyzingMedia && !analysisResult && (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!selectedMachineId || !mediaFile) return;
+
+                setAnalyzingMedia(true);
+                const formData = new FormData();
+                formData.append('file', mediaFile);
+
+                try {
+                  const res = await fetch(`http://localhost:8000/api/machines/${selectedMachineId}/analyze-media`, {
+                    method: 'POST',
+                    body: formData
+                  });
+                  const json = await res.json();
+                  setAnalysisResult(json);
+                  fetchMachines(); // Refresh lists
+                } catch (err) {
+                  console.error(err);
+                  showToast("Erreur d'analyse du fichier.");
+                } finally {
+                  setAnalyzingMedia(false);
+                }
+              }}>
+                <div className="input-group">
+                  <label className="input-label">Sélectionner l'Équipement ciblé</label>
+                  <select 
+                    value={selectedMachineId} 
+                    onChange={(e) => setSelectedMachineId(e.target.value)} 
+                    className="input-field" 
+                    required 
+                    style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                  >
+                    <option value="">-- Choisir un équipement --</option>
+                    {appareils.map(app => (
+                      <option key={app.id} value={app.id}>{app.nom} ({app.site_nom})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="input-group" style={{ marginTop: '20px' }}>
+                  <label className="input-label">Sélectionner un fichier (Photo ou Vidéo de menace)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*,video/*" 
+                    onChange={(e) => setMediaFile(e.target.files ? e.target.files[0] : null)} 
+                    className="input-field" 
+                    required 
+                    style={{ padding: '8px' }} 
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    Tip : Nommez votre fichier "fire.png" ou "fuite.mp4" pour tester la simulation si la clé Gemini n'est pas configurée.
+                  </div>
+                </div>
+
+                {/* Media Preview */}
+                {mediaFile && (
+                  <div style={{ marginTop: '16px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.2)', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', width: '100%', textAlign: 'left' }}>Aperçu du média :</div>
+                    {mediaFile.type.startsWith('image/') ? (
+                      <img 
+                        src={URL.createObjectURL(mediaFile)} 
+                        alt="Preview" 
+                        style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px' }} 
+                      />
+                    ) : (
+                      <video 
+                        src={URL.createObjectURL(mediaFile)} 
+                        controls 
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} 
+                      />
+                    )}
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)', marginTop: '8px', wordBreak: 'break-all' }}>
+                      {mediaFile.name} ({ (mediaFile.size / (1024 * 1024)).toFixed(2) } MB)
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
+                  <button type="button" className="btn-secondary" onClick={() => setIsMediaModalOpen(false)}>Annuler</button>
+                  <button type="submit" className="btn-primary">Lancer l'Analyse IA</button>
+                </div>
+              </form>
+            )}
+
+            {analyzingMedia && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '20px' }}>
+                <div style={{ width: '40px', height: '40px', border: '4px solid var(--primary-light)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                <div style={{ textAlign: 'center', fontSize: '14px', color: 'var(--foreground)', fontWeight: 600 }}>
+                  Analyse multimodale IA en cours...
+                </div>
+                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  L'IA inspecte les frames du fichier pour identifier des anomalies thermiques, incendies, fuites ou pannes.
+                </div>
+                <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
+              </div>
+            )}
+
+            {analysisResult && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '10px' }}>
+                <div style={{ 
+                  padding: '20px', 
+                  borderRadius: '12px', 
+                  backgroundColor: analysisResult.status === 'ALERTE' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                  border: `1px solid ${analysisResult.status === 'ALERTE' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '18px', fontWeight: 800, color: analysisResult.status === 'ALERTE' ? 'var(--danger)' : 'var(--primary)' }}>
+                    <span>{analysisResult.status === 'ALERTE' ? '⚠ INCIDENT IDENTIFIÉ' : '✓ INFRASTRUCTURE SAINE'}</span>
+                  </div>
+                  <div style={{ fontSize: '14px', color: 'var(--foreground)', fontWeight: 600 }}>
+                    {analysisResult.message}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                    <strong>Verdict IA :</strong> {analysisResult.description}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAnalysisResult(null)}>Réanalyser</button>
+                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => { setIsMediaModalOpen(false); setAnalysisResult(null); setMediaFile(null); }}>Fermer</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
