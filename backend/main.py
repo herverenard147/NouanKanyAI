@@ -188,6 +188,23 @@ def get_me(user_id: str = Depends(get_current_user_id), db: Session = Depends(ge
         raise HTTPException(status_code=401, detail="Utilisateur introuvable")
     return serialize_user(user)
 
+class UpdateProfileRequest(BaseModel):
+    nom: Optional[str] = None
+    type_compte: Optional[str] = None
+
+@app.patch("/api/auth/me")
+def update_me(req: UpdateProfileRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Utilisateur introuvable")
+    if req.nom:
+        user.nom = req.nom
+    if req.type_compte:
+        user.type_compte = req.type_compte
+        user.role = req.type_compte
+    db.commit()
+    return serialize_user(user)
+
 # --- Sites ---
 
 class NewSite(BaseModel):
@@ -421,6 +438,75 @@ def simulate_anomaly(machine_id: str, user_id: str = Depends(get_current_user_id
     db.commit()
 
     return {"status": "success"}
+
+@app.post("/api/machines/{machine_id}/reset")
+def reset_machine(machine_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Remet une machine en état actif avec des relevés nominaux (ex: après une alerte)."""
+    mach = db.query(models.Machine).filter(
+        models.Machine.code_interne == machine_id, models.Machine.user_id == user_id
+    ).first()
+    if not mach:
+        return {"error": "Machine non trouvée"}
+
+    mach.status = "actif"
+    db.add(models.SensorMetric(
+        machine_id=mach.id,
+        power_kw=round(mach.puissance_nominale_kw * 0.7, 1),
+        temperature_c=32.0,
+        vibration_hz=1.2,
+        pressure_bar=1.0,
+    ))
+    db.commit()
+
+    return {"status": "success"}
+
+@app.get("/api/machines/{machine_id}/history")
+def get_machine_history(machine_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Retourne l'historique récent des relevés capteurs d'une machine."""
+    mach = db.query(models.Machine).filter(
+        models.Machine.code_interne == machine_id, models.Machine.user_id == user_id
+    ).first()
+    if not mach:
+        return {"error": "Machine non trouvée"}
+
+    metrics = db.query(models.SensorMetric).filter(
+        models.SensorMetric.machine_id == mach.id
+    ).order_by(models.SensorMetric.recorded_at.desc()).limit(20).all()
+
+    alerts = db.query(models.AIAlert).filter(
+        models.AIAlert.machine_id == mach.id
+    ).order_by(models.AIAlert.created_at.desc()).limit(10).all()
+
+    return {
+        "machine": {
+            "nom": mach.nom,
+            "code_interne": mach.code_interne,
+            "status": mach.status,
+            "priority": mach.priority,
+            "puissance_nominale_kw": mach.puissance_nominale_kw,
+            "created_at": mach.created_at.isoformat(),
+        },
+        "history": [
+            {
+                "recorded_at": m.recorded_at.isoformat(),
+                "power_kw": m.power_kw,
+                "temperature_c": m.temperature_c,
+                "vibration_hz": m.vibration_hz,
+                "pressure_bar": m.pressure_bar,
+            }
+            for m in metrics
+        ],
+        "alerts": [
+            {
+                "type_alerte": a.type_alerte,
+                "description": a.description,
+                "action_recommandee": a.action_recommandee,
+                "created_at": a.created_at.isoformat(),
+                "is_resolved": a.is_resolved,
+            }
+            for a in alerts
+        ],
+    }
 
 @app.post("/api/predict")
 def predict(req: PredictionRequest):

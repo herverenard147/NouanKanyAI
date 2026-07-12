@@ -81,6 +81,35 @@ export default function AppareilsPage() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [selectedMachineId, setSelectedMachineId] = useState('');
   const [filterSiteId, setFilterSiteId] = useState('');
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const [diagnosticsData, setDiagnosticsData] = useState<any>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+
+  const openDiagnostics = async (machineId: string) => {
+    setIsDiagnosticsOpen(true);
+    setDiagnosticsLoading(true);
+    setDiagnosticsData(null);
+    try {
+      const res = await fetch(`${API_URL}/api/machines/${machineId}/history`, { headers: authHeaders() });
+      const json = await res.json();
+      setDiagnosticsData(json);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
+  const resetMachine = async (machineId: string) => {
+    try {
+      await fetch(`${API_URL}/api/machines/${machineId}/reset`, { method: 'POST', headers: authHeaders() });
+      showToast("Appareil redémarré avec des relevés nominaux.");
+      fetchMachines();
+    } catch (err) {
+      console.error(err);
+      showToast("Erreur lors du redémarrage.");
+    }
+  };
 
   // Pour la simulation d'alerte (déclenche une alerte sur une machine aléatoire/la première)
   const triggerFakeAlert = async () => {
@@ -252,15 +281,15 @@ export default function AppareilsPage() {
                   <AlertTriangle size={16} /> Lancer Diagnostic d'Urgence
                 </button>
               ) : app.status === 'hors ligne' ? (
-                <button className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                <button onClick={() => resetMachine(app.id)} className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                   <RotateCcw size={16} /> Réveiller le Système
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                  <button onClick={() => openDiagnostics(app.id)} className="btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                     <Activity size={16} /> Diagnostics
                   </button>
-                  <button className="btn-secondary" style={{ width: '48px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <button onClick={() => resetMachine(app.id)} title="Redémarrer / réinitialiser les relevés" className="btn-secondary" style={{ width: '48px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <RotateCcw size={16} />
                   </button>
                 </div>
@@ -479,6 +508,76 @@ export default function AppareilsPage() {
                   <button className="btn-primary" style={{ flex: 1 }} onClick={() => { setIsMediaModalOpen(false); setAnalysisResult(null); setMediaFile(null); }}>Fermer</button>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de diagnostics */}
+      {isDiagnosticsOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div className="glass-card" style={{ width: '480px', maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={18} /> Diagnostics {diagnosticsData?.machine?.nom ? `— ${diagnosticsData.machine.nom}` : ''}
+              </h2>
+              <button onClick={() => setIsDiagnosticsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>✖</button>
+            </div>
+
+            {diagnosticsLoading && (
+              <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Chargement des relevés...</div>
+            )}
+
+            {!diagnosticsLoading && diagnosticsData && !diagnosticsData.error && (
+              <>
+                <div className="grid-2-equal" style={{ marginBottom: '20px' }}>
+                  <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUT</div>
+                    <div style={{ fontWeight: 700, color: diagnosticsData.machine.status === 'alerte' ? '#ef4444' : 'var(--primary)' }}>
+                      {diagnosticsData.machine.status.toUpperCase()}
+                    </div>
+                  </div>
+                  <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>PUISSANCE NOMINALE</div>
+                    <div style={{ fontWeight: 700 }}>{diagnosticsData.machine.puissance_nominale_kw} kW</div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                  HISTORIQUE DES RELEVÉS ({diagnosticsData.history.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                  {diagnosticsData.history.length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Aucun relevé enregistré pour le moment.</div>
+                  )}
+                  {diagnosticsData.history.map((h: any, idx: number) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.015)', border: '1px solid var(--surface-border)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>{new Date(h.recorded_at).toLocaleString('fr-FR')}</span>
+                      <span>{h.power_kw}kW • {h.temperature_c}°C • {h.vibration_hz}Hz</span>
+                    </div>
+                  ))}
+                </div>
+
+                {diagnosticsData.alerts.length > 0 && (
+                  <>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                      ALERTES IA ({diagnosticsData.alerts.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {diagnosticsData.alerts.map((a: any, idx: number) => (
+                        <div key={idx} style={{ fontSize: '12px', padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                          <div style={{ fontWeight: 700, marginBottom: '4px' }}>{a.type_alerte}</div>
+                          <div style={{ color: 'var(--text-muted)' }}>{a.description}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+
+            {!diagnosticsLoading && diagnosticsData?.error && (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>{diagnosticsData.error}</div>
             )}
           </div>
         </div>

@@ -10,21 +10,25 @@ import { API_URL } from '@/lib/api';
 // Génère un profil de consommation journalier réaliste à partir de la puissance totale des machines
 function generateDailyProfile(totalKw: number) {
   const profile = [
-    { time: '00h', factor: 0.3 },
-    { time: '04h', factor: 0.2 },
-    { time: '08h', factor: 0.75 },
-    { time: '10h', factor: 1.0 },
-    { time: '12h', factor: 0.9 },
-    { time: '14h', factor: 1.0 },
-    { time: '16h', factor: 0.95 },
-    { time: '18h', factor: 0.85 },
-    { time: '20h', factor: 0.65 },
-    { time: '22h', factor: 0.45 },
+    { time: '00h', hour: 0, factor: 0.3 },
+    { time: '04h', hour: 4, factor: 0.2 },
+    { time: '08h', hour: 8, factor: 0.75 },
+    { time: '10h', hour: 10, factor: 1.0 },
+    { time: '12h', hour: 12, factor: 0.9 },
+    { time: '14h', hour: 14, factor: 1.0 },
+    { time: '16h', hour: 16, factor: 0.95 },
+    { time: '18h', hour: 18, factor: 0.85 },
+    { time: '20h', hour: 20, factor: 0.65 },
+    { time: '22h', hour: 22, factor: 0.45 },
   ];
-  return profile.map(p => ({
-    time: p.time,
-    conso: parseFloat((totalKw * p.factor).toFixed(1))
-  }));
+  // N'affiche que les heures déjà écoulées aujourd'hui (pas d'heures "futures").
+  const currentHour = new Date().getHours();
+  return profile
+    .filter(p => p.hour <= currentHour)
+    .map(p => ({
+      time: p.time,
+      conso: parseFloat((totalKw * p.factor).toFixed(1))
+    }));
 }
 
 export default function DashboardPage() {

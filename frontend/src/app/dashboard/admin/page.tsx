@@ -232,7 +232,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            <button onClick={() => showNotification("Lancement du réentraînement des modèles XGBoost en arrière-plan...")} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => showNotification("Le ré-entraînement à la demande depuis l'interface n'est pas encore disponible.")} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
               Réentraîner les modèles
             </button>
           </div>

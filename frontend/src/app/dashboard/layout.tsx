@@ -4,14 +4,20 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X } from 'lucide-react';
-import { signOut, getCurrentUser } from '@/lib/auth';
+import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X, User as UserIcon } from 'lucide-react';
+import { signOut, getCurrentUser, authHeaders } from '@/lib/auth';
+import { API_URL } from '@/lib/api';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileNom, setProfileNom] = useState('');
+  const [profileTypeCompte, setProfileTypeCompte] = useState('Particulier');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
 
   // Ferme la sidebar mobile à chaque changement de page
   useEffect(() => {
@@ -32,12 +38,42 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           email: currentUser.email,
           type_compte: currentUser.role || 'Utilisateur'
         });
+        setProfileNom(currentUser.nom || '');
+        setProfileTypeCompte(currentUser.type_compte || 'Particulier');
       } else {
         router.push('/');
       }
     };
     checkUser();
   }, [router]);
+
+  const openProfile = () => {
+    setProfileMsg('');
+    setIsProfileOpen(true);
+  };
+
+  const saveProfile = async () => {
+    setSavingProfile(true);
+    setProfileMsg('');
+    try {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ nom: profileNom, type_compte: profileTypeCompte })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setUser((u: any) => ({ ...u, nom: updated.nom, type_compte: updated.type_compte }));
+        setProfileMsg('Profil mis à jour avec succès.');
+      } else {
+        setProfileMsg('Erreur lors de la mise à jour.');
+      }
+    } catch {
+      setProfileMsg('Erreur lors de la mise à jour.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -120,7 +156,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           justifyContent: 'space-between',
           position: 'relative', zIndex: 1
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            onClick={openProfile}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            title="Mon profil"
+          >
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
               background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -202,13 +242,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981' }} />
               API CONNECTÉE
             </div>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: '#fff', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontWeight: 700, fontSize: '13px',
-              cursor: 'pointer'
-            }}>
+            <div
+              onClick={openProfile}
+              title="Mon profil"
+              style={{
+                width: '32px', height: '32px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontWeight: 700, fontSize: '13px',
+                cursor: 'pointer'
+              }}>
               {user.nom.charAt(0).toUpperCase()}
             </div>
           </div>
@@ -219,6 +262,81 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </div>
       </div>
+
+      {/* Modal Profil */}
+      {isProfileOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
+          <div className="glass-card" style={{ width: '400px', maxWidth: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <UserIcon size={20} /> Mon Profil
+              </h2>
+              <button onClick={() => setIsProfileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                background: 'linear-gradient(135deg, #10b981, #059669)',
+                color: '#fff', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontWeight: 700, fontSize: '22px'
+              }}>
+                {user.nom.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{user.email}</div>
+            </div>
+
+            {profileMsg && (
+              <div style={{ backgroundColor: profileMsg.includes('succès') ? 'rgba(16,185,129,0.1)' : 'rgba(239, 68, 68, 0.1)', color: profileMsg.includes('succès') ? '#10b981' : '#ef4444', border: `1px solid ${profileMsg.includes('succès') ? 'rgba(16,185,129,0.2)' : 'rgba(239, 68, 68, 0.2)'}`, padding: '12px', borderRadius: '10px', marginBottom: '20px', fontSize: '13px' }}>
+                {profileMsg}
+              </div>
+            )}
+
+            <div className="input-group">
+              <label className="input-label">Nom complet</label>
+              <input
+                type="text"
+                className="input-field"
+                value={profileNom}
+                onChange={(e) => setProfileNom(e.target.value)}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Type de compte</label>
+              <select
+                className="input-field"
+                style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+                value={profileTypeCompte}
+                onChange={(e) => setProfileTypeCompte(e.target.value)}
+              >
+                <option value="Particulier">Particulier</option>
+                <option value="Entreprise">Entreprise</option>
+                <option value="Industriel">Industriel</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button type="button" className="btn-secondary" onClick={() => setIsProfileOpen(false)}>Fermer</button>
+              <button type="button" className="btn-primary" onClick={saveProfile} disabled={savingProfile}>
+                {savingProfile ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.06)', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}
+              >
+                <LogOut size={16} /> Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

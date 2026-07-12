@@ -20,6 +20,48 @@ export default function FacturationPage() {
     setTimeout(() => setNotification(""), 3000);
   };
 
+  const downloadTextFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAudit = () => {
+    const lines = [
+      'NouanKanyAI — Rapport d\'Audit des Économies',
+      `Généré le : ${new Date().toLocaleString('fr-FR')}`,
+      '',
+      `Économies Totales Vérifiées (Ce Mois) : ${grossSavings.toLocaleString('fr-FR')} FCFA`,
+      `Gain-Share (10%) : ${gainShare.toLocaleString('fr-FR')} FCFA`,
+      '',
+      'JOURNAL D\'AUDIT',
+      'Horodatage | Action | Référence | Statut',
+      ...(auditTrail.length > 0
+        ? auditTrail.map(a => `${a.timestamp} | ${a.action} | ${a.ref} | ${a.status}`)
+        : ['(aucun audit enregistré pour le moment)']),
+    ];
+    downloadTextFile(`audit-nouankanyai-${Date.now()}.txt`, lines.join('\n'));
+    showNotification("Rapport d'audit téléchargé.");
+  };
+
+  const downloadInvoice = (inv: any) => {
+    const lines = [
+      'NouanKanyAI — Facture Gain-Share',
+      `Facture : ${inv.id}`,
+      `Période : ${inv.month}`,
+      `Montant : ${inv.amount}`,
+      `Généré le : ${new Date().toLocaleString('fr-FR')}`,
+    ];
+    downloadTextFile(`facture-${inv.id}.txt`, lines.join('\n'));
+    showNotification(`Facture ${inv.id} téléchargée.`);
+  };
+
   useEffect(() => {
     const fetchFacturationData = async () => {
       try {
@@ -110,7 +152,7 @@ export default function FacturationPage() {
                   <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--primary)' }}>{gainShare.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} FCFA</div>
                 </div>
               </div>
-              <button onClick={() => showNotification("Génération de l'audit PDF en cours...")} className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', border: 'none', cursor: 'pointer' }}>
+              <button onClick={downloadAudit} className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', border: 'none', cursor: 'pointer' }}>
                 <Download size={16} /> Télécharger l'Audit
               </button>
             </div>
@@ -160,7 +202,7 @@ export default function FacturationPage() {
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
-              <a href="#" onClick={(e) => { e.preventDefault(); showNotification("Connexion à l'explorateur de noeuds en cours..."); }} style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); showNotification("Le registre complet n'est pas encore disponible — bientôt ici."); }} style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
             </div>
           </div>
         </div>
@@ -191,7 +233,7 @@ export default function FacturationPage() {
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>CONFIG. SECOURS</div>
                 </div>
               </div>
-              <span onClick={() => showNotification("Ouverture des paramètres du portefeuille...")} style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>CHANGER</span>
+              <span onClick={() => showNotification("Gestion des méthodes de paiement bientôt disponible.")} style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>CHANGER</span>
             </div>
 
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '8px', textTransform: 'uppercase' }}>PROCHAIN CYCLE DE FACTURATION : 01 OCT 2026</div>
@@ -214,7 +256,7 @@ export default function FacturationPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 700, fontSize: '14px' }}>{inv.amount}</div>
-                    <div onClick={() => showNotification(`Téléchargement de la facture ${inv.id}...`)} style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>TÉLÉCHARGER</div>
+                    <div onClick={() => downloadInvoice(inv)} style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 700, cursor: 'pointer' }}>TÉLÉCHARGER</div>
                   </div>
                 </div>
               ))}

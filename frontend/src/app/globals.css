@@ -688,6 +688,10 @@ a { color: inherit; text-decoration: none; }
   background: rgba(255,255,255,0.06);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
+/* Applique un fond sombre à la liste déroulante de tous les <select> de l'app
+   (pas seulement dans les modales d'auth) : sans ça, le navigateur affiche
+   la popup d'options en blanc par défaut, hors thème. */
+select.input-field option,
 .modal-content.dark select.input-field option {
   background-color: #0f172a;
   color: #fff;
