@@ -137,9 +137,14 @@ export default function AppareilsPage() {
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>SANTÉ IA MOYENNE</div>
-            <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>Optimal <ShieldCheck size={12} /></div>
+            <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {appareils.length === 0 || appareils.filter(a => a.status === 'alerte').length === 0 ? 'Optimal' : 'Attention'} <ShieldCheck size={12} />
+            </div>
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800 }}>94.8 <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span></div>
+          <div style={{ fontSize: '32px', fontWeight: 800 }}>
+            {appareils.length > 0 ? (((appareils.length - appareils.filter(a => a.status === 'alerte').length) / appareils.length) * 100).toFixed(1) : '100.0'}
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>%</span>
+          </div>
         </div>
 
         <div className="glass-card" style={{ padding: '20px', border: '1px solid #DC2626', borderLeft: '4px solid #DC2626' }}>
@@ -152,10 +157,13 @@ export default function AppareilsPage() {
 
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>OPTIMISATION</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>PUISSANCE MOYENNE</div>
             <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700 }}>Active ⚡</div>
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800 }}>12.5 <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>x</span></div>
+          <div style={{ fontSize: '32px', fontWeight: 800 }}>
+            {appareils.filter(a => a.status === 'actif').length > 0 ? (totalPower / appareils.filter(a => a.status === 'actif').length).toFixed(1) : '0.0'}
+            <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}> kW</span>
+          </div>
         </div>
       </div>
 

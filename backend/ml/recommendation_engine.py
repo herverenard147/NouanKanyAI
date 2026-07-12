@@ -102,10 +102,11 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
     ]
     """
     recommendations = []
-    
+
     for machine in machines_state:
         mid = machine['machine_id']
-        
+        nom = machine.get('nom') or mid
+
         # 1. Vérifier les anomalies
         anomaly = detect_anomalies(iso_data, machine)
         if anomaly['is_anomaly']:
@@ -113,12 +114,12 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
                 'machine_id': mid,
                 'type': 'alerte',
                 'severity': anomaly['severity'],
-                'title': f"Anomalie détectée sur {mid}",
-                'description': f"Les capteurs de {mid} montrent un comportement anormal "
+                'title': f"Anomalie détectée sur {nom}",
+                'description': f"Les capteurs de {nom} montrent un comportement anormal "
                               f"(score: {anomaly['anomaly_score']}). "
                               f"Température: {machine['temperature_c']}°C, "
                               f"Vibration: {machine['vibration_hz']}Hz.",
-                'action': 'Lancer un diagnostic d\'urgence',
+                'action': f"Lancez un diagnostic d'urgence sur {nom}",
                 'gain_fcfa': 0
             })
         
@@ -144,14 +145,14 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
                 'machine_id': mid,
                 'type': 'optimisation',
                 'severity': 'modérée',
-                'title': f"Surconsommation sur {mid}",
-                'description': f"{mid} consomme {machine['power_kw']}kW alors que la prédiction "
+                'title': f"Surconsommation sur {nom}",
+                'description': f"{nom} consomme {machine['power_kw']}kW alors que la prédiction "
                               f"normale est de {avg_predicted_kw:.1f}kW. "
                               f"Réduire la charge permettrait d'économiser.",
-                'action': f"Réduire la puissance de {excess_kw:.1f}kW",
+                'action': f"Éteignez {nom} pendant 10 minutes pour réduire la charge de {excess_kw:.1f}kW",
                 'gain_fcfa': gain
             })
-        
+
         # Règle 2: Délestage aux heures de pointe (si machine basse priorité)
         from datetime import datetime
         current_hour = datetime.now().hour
@@ -161,23 +162,23 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
                 'machine_id': mid,
                 'type': 'délestage',
                 'severity': 'faible',
-                'title': f"Délestage préventif possible sur {mid}",
-                'description': f"Nous sommes en heure de pointe (10h-16h). {mid} est de priorité "
+                'title': f"Délestage préventif possible sur {nom}",
+                'description': f"Nous sommes en heure de pointe (10h-16h). {nom} est de priorité "
                               f"basse et peut être mise en veille pendant 2h sans impact.",
-                'action': f"Programmer un délestage de 2h sur {mid}",
+                'action': f"Mettez {nom} en veille pendant 2h (délestage préventif)",
                 'gain_fcfa': gain
             })
-        
+
         # Règle 3: Surchauffe (température > 60°C)
         if machine['temperature_c'] > 60:
             recommendations.append({
                 'machine_id': mid,
                 'type': 'alerte',
                 'severity': 'critique',
-                'title': f"Surchauffe détectée sur {mid}",
-                'description': f"La température de {mid} est de {machine['temperature_c']}°C "
+                'title': f"Surchauffe détectée sur {nom}",
+                'description': f"La température de {nom} est de {machine['temperature_c']}°C "
                               f"(seuil critique: 60°C). Risque de dommage matériel.",
-                'action': 'Inspection immédiate requise',
+                'action': f"Éteignez {nom} immédiatement et lancez une inspection",
                 'gain_fcfa': 0
             })
     

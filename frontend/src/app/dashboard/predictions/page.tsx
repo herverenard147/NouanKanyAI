@@ -3,36 +3,46 @@
 import { useState, useEffect } from 'react';
 import { Bot, Send, Sparkles, Zap, ShieldAlert, Loader2 } from 'lucide-react';
 import { API_URL } from '@/lib/api';
-import { authHeaders } from '@/lib/auth';
+import { authHeaders, getCurrentUser } from '@/lib/auth';
 
 export default function PredictionsPage() {
   const [inputMessage, setInputMessage] = useState('');
   const defaultMessage = { sender: 'ai', text: 'Bonjour ! Je suis votre Assistant IA NouanKanyAI. Je suis connecté à vos modèles XGBoost et Isolation Forest en temps réel. Comment puis-je vous aider ?' };
   const [messages, setMessages] = useState<any[]>([defaultMessage]);
   const [isClient, setIsClient] = useState(false);
-  
+  const [chatKey, setChatKey] = useState<string | null>(null);
+
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
 
-  // Load chat history from localStorage on mount
+  // Charge l'historique de chat propre à l'utilisateur connecté (clé dédiée par user_id :
+  // sans ça, tous les comptes utilisés dans le même navigateur partageaient la même conversation).
   useEffect(() => {
-    setIsClient(true);
-    const savedChat = localStorage.getItem('energai_chat_history');
-    if (savedChat) {
-      try {
-        setMessages(JSON.parse(savedChat));
-      } catch (e) {
-        console.error("Erreur de chargement de l'historique", e);
+    const loadHistory = async () => {
+      const user = await getCurrentUser();
+      const key = user ? `energai_chat_history_${user.id}` : null;
+      setChatKey(key);
+      if (key) {
+        const savedChat = localStorage.getItem(key);
+        if (savedChat) {
+          try {
+            setMessages(JSON.parse(savedChat));
+          } catch (e) {
+            console.error("Erreur de chargement de l'historique", e);
+          }
+        }
       }
-    }
+      setIsClient(true);
+    };
+    loadHistory();
   }, []);
 
   // Save chat history to localStorage on change
   useEffect(() => {
-    if (isClient) {
-      localStorage.setItem('energai_chat_history', JSON.stringify(messages));
+    if (isClient && chatKey) {
+      localStorage.setItem(chatKey, JSON.stringify(messages));
     }
-  }, [messages, isClient]);
+  }, [messages, isClient, chatKey]);
 
   // Fetch true recommendations from FastAPI
   useEffect(() => {
@@ -233,16 +243,16 @@ export default function PredictionsPage() {
                       <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
                         {rec.description}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'stretch' }}>
                         {rec.gain_fcfa > 0 ? (
                           <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>GAIN ESTIMÉ : {rec.gain_fcfa.toLocaleString('fr-FR')} XOF</div>
                         ) : (
                           <div style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>ACTION CRITIQUE</div>
                         )}
-                        <button 
+                        <button
                                 onClick={() => executeAction(rec)}
-                                className={rec.severity === 'critique' ? "btn-secondary" : "btn-primary"} 
-                                style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', borderColor: rec.severity === 'critique' ? '#DC2626' : '', color: rec.severity === 'critique' ? '#DC2626' : '', cursor: 'pointer' }}>
+                                className={rec.severity === 'critique' ? "btn-secondary" : "btn-primary"}
+                                style={{ width: '100%', padding: '8px 14px', fontSize: '12px', textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.4, borderColor: rec.severity === 'critique' ? '#DC2626' : '', color: rec.severity === 'critique' ? '#DC2626' : '', cursor: 'pointer' }}>
                           {rec.action}
                         </button>
                       </div>

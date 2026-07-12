@@ -12,13 +12,17 @@ export interface AuthUser {
   role: string;
 }
 
+// sessionStorage (pas localStorage) : chaque onglet garde sa propre session.
+// Avec localStorage, se connecter à un 2e compte dans un autre onglet du même
+// navigateur écrasait le token du 1er onglet, qui se mettait alors à afficher
+// les données de l'autre utilisateur au polling suivant.
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 function setToken(token: string) {
-  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 export function authHeaders(): Record<string, string> {
@@ -61,7 +65,7 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
 
 export function signOut() {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {

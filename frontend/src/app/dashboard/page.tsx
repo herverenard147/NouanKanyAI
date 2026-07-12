@@ -23,7 +23,7 @@ function generateDailyProfile(totalKw: number) {
   ];
   return profile.map(p => ({
     time: p.time,
-    conso: parseFloat((totalKw * p.factor * (0.9 + Math.random() * 0.2)).toFixed(1))
+    conso: parseFloat((totalKw * p.factor).toFixed(1))
   }));
 }
 
@@ -152,7 +152,7 @@ export default function DashboardPage() {
               alignItems: 'center', 
               gap: '8px' 
             }}>
-              {aiSuggestion.type} sur {aiSuggestion.machine_id}
+              {aiSuggestion.title}
             </div>
             <div style={{ color: 'var(--text-subtle)', fontSize: '14px', lineHeight: '1.5' }}>
               {aiSuggestion.action}
@@ -174,7 +174,7 @@ export default function DashboardPage() {
             {totalConso.toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>kW</span>
           </div>
           <div style={{ color: 'var(--primary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-            <ArrowUpRight size={14} /> -12% depuis hier
+            <ArrowUpRight size={14} /> {machines.filter(m => m.status === 'actif').length} appareil(s) actif(s) sur {machines.length}
           </div>
         </div>
 
@@ -193,7 +193,7 @@ export default function DashboardPage() {
             } <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>XOF</span>
           </div>
           <div style={{ color: 'var(--primary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-            <ArrowUpRight size={14} /> +12.4% d'optimisation IA
+            <ArrowUpRight size={14} /> Estimation basée sur 15% d'économie IA
           </div>
         </div>
       </div>

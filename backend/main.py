@@ -87,6 +87,7 @@ def load_models():
 
 class SensorReading(BaseModel):
     machine_id: str
+    nom: Optional[str] = None
     power_kw: float
     temperature_c: float
     vibration_hz: float
@@ -287,6 +288,7 @@ def get_admin_metrics(db: Session = Depends(get_db)):
         sites_data = db.query(models.Site).all()
         machines_data = db.query(models.Machine).all()
         users_data = db.query(models.User).order_by(models.User.created_at.asc()).all()
+        anomalies_detected = db.query(models.AIAlert).count() + db.query(models.Machine).filter(models.Machine.status == "alerte").count()
 
         total_sites = len(sites_data)
         total_machines = len(machines_data)
@@ -339,7 +341,7 @@ def get_admin_metrics(db: Session = Depends(get_db)):
             "ml_health": {
                 "xgboost_accuracy": 94.2,
                 "xgboost_mape": 5.8,  # Erreur absolue moyenne en %
-                "isolation_forest_anomalies_detected": 124,
+                "isolation_forest_anomalies_detected": anomalies_detected,
                 "model_drift_status": "NORMAL"
             },
             "system": {
