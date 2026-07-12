@@ -5,11 +5,9 @@ auth.py — Authentification maison (remplace Supabase Auth) : hash de mot de pa
 import os
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from fastapi import Header, HTTPException
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "")
 JWT_ALGORITHM = "HS256"
@@ -17,11 +15,11 @@ JWT_EXPIRE_DAYS = 30
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
 def create_access_token(user_id: str) -> str:

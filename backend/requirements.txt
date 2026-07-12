@@ -5,7 +5,7 @@ python-dotenv
 python-multipart
 sqlalchemy
 psycopg2-binary
-passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
 joblib
 xgboost
