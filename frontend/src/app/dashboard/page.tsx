@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Zap, Target, Power, AlertTriangle, Bot } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/lib/supabase';
+import { API_URL } from '@/lib/api';
 
 // Génère un profil de consommation journalier réaliste à partir de la puissance totale des machines
 function generateDailyProfile(totalKw: number) {
@@ -54,7 +55,7 @@ export default function DashboardPage() {
     // Fetch live machines state
     const fetchMachines = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/machines');
+        const res = await fetch(`${API_URL}/api/machines`);
         const data = await res.json();
         setMachines(data);
         
@@ -71,7 +72,7 @@ export default function DashboardPage() {
 
         // Fetch AI recommendation
         if (data.length > 0) {
-          const recRes = await fetch('http://localhost:8000/api/recommend', {
+          const recRes = await fetch(`${API_URL}/api/recommend`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ state: data })

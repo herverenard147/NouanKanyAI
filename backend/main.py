@@ -29,15 +29,22 @@ except Exception as e:
 
 app = FastAPI(title="NouanKanyAI — Intelligence Artificielle", version="1.0.0")
 
-# CORS pour que le frontend React puisse appeler l'API
+# CORS pour que le frontend Next.js puisse appeler l'API.
+# En production, définir la variable d'env FRONTEND_URL (ex: https://nouankanyai-frontend.onrender.com).
+# ALLOWED_ORIGINS permet d'ajouter des origines supplémentaires séparées par des virgules.
+_default_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+_frontend_url = os.environ.get("FRONTEND_URL", "").strip()
+_extra_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+allowed_origins = _default_origins + ([_frontend_url] if _frontend_url else []) + _extra_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:3001", 
-        "http://127.0.0.1:3000", 
-        "http://127.0.0.1:3001"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -444,4 +451,5 @@ def chat_with_gemini(req: ChatRequest):
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
