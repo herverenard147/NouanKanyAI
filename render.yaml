@@ -3,7 +3,7 @@ services:
   - type: web
     name: nouankanyai-backend
     runtime: python
-    plan: starter
+    plan: free
     region: frankfurt
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -30,7 +30,7 @@ services:
   - type: web
     name: nouankanyai-frontend
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     rootDir: frontend
     buildCommand: npm install && npm run build
