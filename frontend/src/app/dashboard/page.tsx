@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUpRight, Zap, Target, Power, AlertTriangle, Bot } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { supabase } from '@/lib/supabase';
+import { getCurrentUser } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 // Génère un profil de consommation journalier réaliste à partir de la puissance totale des machines
@@ -40,11 +40,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user) {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
         setUser({
-          nom: session.user.user_metadata?.nom || session.user.email,
-          email: session.user.email
+          nom: currentUser.nom || currentUser.email,
+          email: currentUser.email
         });
       } else {
         router.push('/');

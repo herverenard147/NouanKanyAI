@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { signOut, getCurrentUser } from '@/lib/auth';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -18,19 +18,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setSidebarOpen(false);
   }, [pathname]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    signOut();
     router.push('/');
   };
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user) {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
         setUser({
-          nom: session.user.user_metadata?.nom || session.user.email,
-          email: session.user.email,
-          type_compte: session.user.user_metadata?.role || 'Utilisateur'
+          nom: currentUser.nom || currentUser.email,
+          email: currentUser.email,
+          type_compte: currentUser.role || 'Utilisateur'
         });
       } else {
         router.push('/');

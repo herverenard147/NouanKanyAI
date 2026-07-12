@@ -1,5 +1,5 @@
 services:
-  # --- Backend : API FastAPI (ML + Supabase + Gemini) ---
+  # --- Backend : API FastAPI (ML + PostgreSQL + Gemini) ---
   - type: web
     name: nouankanyai-backend
     runtime: python
@@ -15,11 +15,11 @@ services:
       # Secrets réels à saisir dans le dashboard Render (jamais committés) :
       - key: GEMINI_API_KEY
         sync: false
-      - key: SUPABASE_URL
+      # Chaîne de connexion PostgreSQL (Render Postgres "nouankanyai-db")
+      - key: DATABASE_URL
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: SUPABASE_ACCESS_TOKEN
+      # Secret de signature des JWT d'authentification (générer une valeur aléatoire longue)
+      - key: JWT_SECRET
         sync: false
       # URL complète du frontend déployé (ex: https://nouankanyai-frontend.onrender.com),
       # à renseigner après le premier déploiement du service frontend (autorise le CORS).
@@ -41,9 +41,4 @@ services:
       # URL complète du backend déployé (ex: https://nouankanyai-backend.onrender.com),
       # à renseigner après le premier déploiement du service backend.
       - key: NEXT_PUBLIC_API_URL
-        sync: false
-      # Clé anonyme publique Supabase (sûre à exposer côté client) et URL du projet.
-      - key: NEXT_PUBLIC_SUPABASE_URL
-        sync: false
-      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         sync: false

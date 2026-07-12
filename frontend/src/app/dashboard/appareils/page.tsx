@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Activity, AlertTriangle, ShieldCheck, Zap, RotateCcw, ActivitySquare, AlertOctagon } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 export default function AppareilsPage() {
@@ -22,8 +22,8 @@ export default function AppareilsPage() {
 
   const fetchSites = async () => {
     try {
-      const { data } = await supabase.from('sites').select('*');
-      if (data) setSites(data);
+      const res = await fetch(`${API_URL}/api/sites`, { headers: authHeaders() });
+      if (res.ok) setSites(await res.json());
     } catch (e) {
       console.error("Erreur lors de la récupération des sites", e);
     }

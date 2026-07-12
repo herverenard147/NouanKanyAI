@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Factory, MapPin, Activity, AlertCircle, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 
 export default function SitesPage() {
@@ -13,36 +13,36 @@ export default function SitesPage() {
 
   useEffect(() => {
     const fetchSites = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-        
-        // Récupérer les sites de l'utilisateur
-        const { data: sitesData } = await supabase.from('sites').select('*').eq('user_id', user.id);
-        
-        // Récupérer toutes les machines
-        const { data: machinesData } = await supabase.from('machines').select('*');
-        
-        if (sitesData) {
-          const formattedSites = sitesData.map(s => {
-            // Filtrer les machines appartenant à ce site
-            const siteMachines = machinesData ? machinesData.filter((m: any) => m.site_id === s.id) : [];
-            const activeMachines = siteMachines.filter((m: any) => m.status === 'actif');
-            const totalPower = activeMachines.reduce((sum: number, m: any) => sum + parseFloat(m.puissance_nominale_kw || 0), 0);
-            const alertsCount = siteMachines.filter((m: any) => m.status === 'alerte').length;
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
 
-            return {
-              id: s.id,
-              name: s.nom,
-              location: s.localisation,
-              status: alertsCount > 0 ? 'alerte' : 'optimal',
-              power: `${totalPower.toFixed(1)} kW`,
-              devices: siteMachines.length,
-              alerts: alertsCount
-            };
-          });
-          setSites(formattedSites);
-        }
+        // Récupérer les sites de l'utilisateur
+        const sitesRes = await fetch(`${API_URL}/api/sites`, { headers: authHeaders() });
+        const sitesData = sitesRes.ok ? await sitesRes.json() : [];
+
+        // Récupérer toutes les machines
+        const machinesRes = await fetch(`${API_URL}/api/machines`);
+        const machinesData = machinesRes.ok ? await machinesRes.json() : [];
+
+        const formattedSites = sitesData.map((s: any) => {
+          // Filtrer les machines appartenant à ce site
+          const siteMachines = machinesData.filter((m: any) => m.site_id === s.id);
+          const activeMachines = siteMachines.filter((m: any) => m.status === 'actif');
+          const totalPower = activeMachines.reduce((sum: number, m: any) => sum + parseFloat(m.power_kw || 0), 0);
+          const alertsCount = siteMachines.filter((m: any) => m.status === 'alerte').length;
+
+          return {
+            id: s.id,
+            name: s.nom,
+            location: s.localisation,
+            status: alertsCount > 0 ? 'alerte' : 'optimal',
+            power: `${totalPower.toFixed(1)} kW`,
+            devices: siteMachines.length,
+            alerts: alertsCount
+          };
+        });
+        setSites(formattedSites);
       }
     };
     fetchSites();
@@ -59,16 +59,15 @@ export default function SitesPage() {
     try {
       const res = await fetch(`${API_URL}/api/sites`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           nom: newSiteName,
-          localisation: newSiteLocation,
-          user_id: user.id
+          localisation: newSiteLocation
         })
       });
       const data = await res.json();
-      
-      if (data && !data.error) {
+
+      if (res.ok && data && !data.error) {
         const newSite = {
           id: data.id,
           name: data.nom,

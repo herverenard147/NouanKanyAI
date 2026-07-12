@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { signUp, signIn, getCurrentUser } from '@/lib/auth';
 import Image from 'next/image';
 
 const CAROUSEL_BACKGROUNDS = [
@@ -51,8 +51,8 @@ export default function Home() {
   // Check existing session
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const user = await getCurrentUser();
+      if (user) {
         router.push('/dashboard');
       }
     };
@@ -76,36 +76,15 @@ export default function Home() {
 
     try {
       if (authMode === 'register') {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              nom,
-              type_compte: typeCompte
-            }
-          }
-        });
-
-        if (signUpError) throw signUpError;
-        if (data.user) {
-          showToast("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
-          setAuthMode('login');
-        }
+        await signUp(email, password, nom, typeCompte);
+        showToast("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+        setAuthMode('login');
       } else {
-        const { data, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (signInError) throw signInError;
-        
-        if (data.session) {
-          showToast("Connexion réussie ! Redirection en cours...");
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1200);
-        }
+        await signIn(email, password);
+        showToast("Connexion réussie ! Redirection en cours...");
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1200);
       }
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');
