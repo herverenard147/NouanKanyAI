@@ -228,14 +228,14 @@ export default function PredictionsPage() {
           </h3>
           
           {!loadingRecs && recommendations.length === 0 ? (
-            <div className="glass-card" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+            <div className="glass-card" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', flexShrink: 0 }}>
               Aucune recommandation pour le moment. Votre usine est optimale !
             </div>
           ) : (
             recommendations.map((rec, idx) => {
               const color = getColorForSeverity(rec.severity);
               return (
-                <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${color}` }}>
+                <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${color}`, flexShrink: 0 }}>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                     <div>{getIconForType(rec.type, rec.severity)}</div>
                     <div style={{ flex: 1 }}>
