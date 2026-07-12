@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Activity, AlertTriangle, ShieldCheck, Zap, RotateCcw, ActivitySquare, AlertOctagon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { API_URL } from '@/lib/api';
 
 export default function AppareilsPage() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function AppareilsPage() {
 
   const fetchMachines = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/machines');
+      const res = await fetch(`${API_URL}/api/machines`);
       const data = await res.json();
       
       const mapped = data.map((m: any) => ({
@@ -90,7 +91,7 @@ export default function AppareilsPage() {
       }
       // On prend la première machine saine
       const target = appareils.find(a => a.status === 'actif') || appareils[0];
-      await fetch(`http://localhost:8000/api/machines/${target.id}/simulate`, { method: 'POST' });
+      await fetch(`${API_URL}/api/machines/${target.id}/simulate`, { method: 'POST' });
       fetchMachines();
     } catch (err) {
       console.error(err);
@@ -282,7 +283,7 @@ export default function AppareilsPage() {
               if(!name || !power || !quantity || !siteId) return;
 
               try {
-                await fetch('http://localhost:8000/api/machines', {
+                await fetch(`${API_URL}/api/machines`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ nom: name, power_kw: parseFloat(power), quantite: parseInt(quantity), site_id: siteId })
@@ -354,7 +355,7 @@ export default function AppareilsPage() {
                 formData.append('file', mediaFile);
 
                 try {
-                  const res = await fetch(`http://localhost:8000/api/machines/${selectedMachineId}/analyze-media`, {
+                  const res = await fetch(`${API_URL}/api/machines/${selectedMachineId}/analyze-media`, {
                     method: 'POST',
                     body: formData
                   });

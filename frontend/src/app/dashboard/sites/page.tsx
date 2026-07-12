@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Factory, MapPin, Activity, AlertCircle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { API_URL } from '@/lib/api';
 
 export default function SitesPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function SitesPage() {
     if (!newSiteName || !newSiteLocation || !user) return;
     
     try {
-      const res = await fetch('http://localhost:8000/api/sites', {
+      const res = await fetch(`${API_URL}/api/sites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
