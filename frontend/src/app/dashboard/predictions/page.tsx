@@ -165,7 +165,7 @@ export default function PredictionsPage() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', height: '600px' }}>
+      <div className="grid-2-equal predictions-grid" style={{ height: '600px' }}>
         
         {/* Chat Interface */}
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>

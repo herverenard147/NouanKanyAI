@@ -114,7 +114,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+      <div className="grid-2-1">
 
         {/* Left Column: Users & Activities */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

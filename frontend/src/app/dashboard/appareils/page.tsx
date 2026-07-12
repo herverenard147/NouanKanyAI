@@ -125,7 +125,7 @@ export default function AppareilsPage() {
       </div>
 
       {/* 4 KPIs Top Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+      <div className="grid-4-col" style={{ marginBottom: '32px' }}>
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>PUISSANCE TOTALE</div>
@@ -190,7 +190,7 @@ export default function AppareilsPage() {
       </div>
 
       {/* Equipment Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+      <div className="grid-3-col">
         {filteredAppareils.map((app) => (
           <div key={app.id} className="glass-card" style={{ 
             padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -314,7 +314,7 @@ export default function AppareilsPage() {
                 )}
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid-2-equal">
                 <div className="input-group">
                   <label className="input-label">Puissance (kW)</label>
                   <input type="number" name="puissance" className="input-field" placeholder="Ex: 150" min="0.1" step="0.1" required />

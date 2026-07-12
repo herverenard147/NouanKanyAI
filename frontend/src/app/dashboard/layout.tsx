@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap } from 'lucide-react';
+import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Ferme la sidebar mobile à chaque changement de page
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -46,8 +52,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="dashboard-layout">
+      {/* Overlay mobile (visible seulement quand la sidebar est ouverte en dessous de 900px) */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Logo */}
         <div style={{ padding: '0 20px', marginBottom: '8px', position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -146,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top Header */}
-        <div style={{
+        <div className="dashboard-header" style={{
           height: '60px',
           background: 'rgba(13,17,23,0.8)',
           backdropFilter: 'blur(16px)',
@@ -155,13 +166,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           justifyContent: 'space-between', padding: '0 40px',
           flexShrink: 0
         }}>
+          {/* Hamburger (mobile only) */}
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen(v => !v)}
+            aria-label="Ouvrir le menu"
+          >
+            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+
           {/* Search */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '10px',
-            width: '360px', background: 'rgba(255,255,255,0.04)',
-            borderRadius: '8px', padding: '8px 14px',
-            border: '1px solid rgba(255,255,255,0.07)',
-          }}>
+          <div className="header-search">
             <span style={{ color: '#64748b', fontSize: '14px' }}>⌕</span>
             <input
               type="text"

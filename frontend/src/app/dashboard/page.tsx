@@ -198,7 +198,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+      <div className="grid-2-1">
         {/* Graphique */}
         <div className="glass-card" style={{ height: '380px', padding: '28px' }}>
           <h3 style={{ marginBottom: '24px', fontWeight: 700, fontSize: '16px', color: 'var(--foreground)' }}>Évolution de la consommation</h3>
