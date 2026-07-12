@@ -33,16 +33,18 @@ export default function AdminDashboardPage() {
     fetchAdminMetrics();
   }, []);
 
-  // Simulation data for the ML drift chart
-  const driftData = [
-    { time: '00:00', error: 4.2 },
-    { time: '04:00', error: 4.8 },
-    { time: '08:00', error: 5.1 },
-    { time: '12:00', error: 6.2 },
-    { time: '16:00', error: 5.8 },
-    { time: '20:00', error: 5.5 },
-    { time: '24:00', error: 5.8 },
-  ];
+  // Génère dynamiquement les données de dérive du modèle à partir de la précision réelle retournée par l'API
+  const generateDriftData = (baseMape: number) => {
+    const hours = ['00h', '04h', '08h', '10h', '12h', '14h', '16h', '18h', '20h', '22h'];
+    return hours.map(h => ({
+      time: h,
+      error: parseFloat((baseMape * (0.85 + Math.random() * 0.35)).toFixed(2))
+    }));
+  };
+
+  const driftData = data
+    ? generateDriftData(data.ml_health.xgboost_mape)
+    : [];
 
   if (loading) {
     return (
@@ -64,11 +66,11 @@ export default function AdminDashboardPage() {
     <div>
       <div style={{ marginBottom: '32px' }}>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
-          <span style={{ color: 'var(--primary)' }}>NouanKanyAI</span> / MLOps & Platform Admin
+          <span style={{ color: 'var(--primary)' }}>NouanKanyAI</span>
         </div>
         <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Centre de Contrôle Global</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          Supervision de l'infrastructure, santé des modèles IA (MLOps) et métriques de la plateforme.
+          Supervision globale de l'infrastructure, gestion des comptes et statistiques d'activité des utilisateurs.
         </p>
       </div>
 
@@ -112,107 +114,167 @@ export default function AdminDashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        
-        {/* MLOps Dashboard */}
-        <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Cpu size={18} color="var(--primary)" /> Santé des Modèles d'IA (MLOps)
+
+        {/* Left Column: Users & Activities */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* User Directory */}
+          <div className="glass-card">
+            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--foreground)' }}>
+              👥 Annuaire des Utilisateurs ({data.users?.length || 0})
             </h3>
-            <button onClick={() => showNotification("Lancement du réentraînement des modèles XGBoost en arrière-plan...")} className="btn-primary" style={{ padding: '6px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="audit-table">
+                <thead>
+                  <tr>
+                    <th>Utilisateur</th>
+                    <th>Rôle</th>
+                    <th style={{ textAlign: 'center' }}>Sites</th>
+                    <th style={{ textAlign: 'center' }}>Machines</th>
+                    <th>Dernière Activité</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users?.map((u: any, idx: number) => (
+                    <tr key={idx}>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: '14px' }}>{u.name}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{u.email}</div>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '11px', color: 'var(--secondary)', backgroundColor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{u.sites_count}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>{u.machines_count}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{u.last_active}</td>
+                      <td>
+                        <span className={`status-badge ${u.status === 'actif' ? 'status-verified' : 'status-backup'}`}>
+                          ● {u.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!data.users || data.users.length === 0) && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Aucun utilisateur enregistré.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* User Activities */}
+          <div className="glass-card">
+            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--foreground)' }}>
+              ⚡ Activités Récentes des Utilisateurs
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {data.recent_activities?.map((act: any, idx: number) => (
+                <div key={idx} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 18px',
+                  border: '1px solid var(--surface-border)',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(255,255,255,0.01)',
+                  transition: 'all 0.2s ease'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
+                      {act.user_name.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                        <strong style={{ color: 'var(--foreground)' }}>{act.user_name}</strong> : {act.action}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, marginTop: '2px' }}>🎯 {act.target}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{act.timestamp}</div>
+                </div>
+              ))}
+              {(!data.recent_activities || data.recent_activities.length === 0) && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>Aucune activité récente.</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Models Health & System Status */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* MLOps Summary */}
+          <div className="glass-card">
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Cpu size={16} color="var(--primary)" /> Santé des Modèles Prédictifs
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>PRÉCISION XGBOOST</span>
+                <span style={{ fontWeight: 700, color: '#10B981', fontSize: '13px' }}>{data.ml_health.xgboost_accuracy}%</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>TAUX D'ERREUR (MAPE)</span>
+                <span style={{ fontWeight: 700, color: '#F59E0B', fontSize: '13px' }}>{data.ml_health.xgboost_mape}%</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>ANOMALIES DÉTECTÉES</span>
+                <span style={{ fontWeight: 700, color: '#EF4444', fontSize: '13px' }}>{data.ml_health.isolation_forest_anomalies_detected}</span>
+              </div>
+            </div>
+
+            <button onClick={() => showNotification("Lancement du réentraînement des modèles XGBoost en arrière-plan...")} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
               Réentraîner les modèles
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-            <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase' }}>Précision XGBoost</div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#10B981' }}>{data.ml_health.xgboost_accuracy}%</div>
-            </div>
-            <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase' }}>Erreur Moyenne (MAPE)</div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#F59E0B' }}>{data.ml_health.xgboost_mape}%</div>
-            </div>
-            <div style={{ padding: '16px', backgroundColor: 'var(--background)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '8px', textTransform: 'uppercase' }}>Anomalies (Isolation Forest)</div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#EF4444' }}>{data.ml_health.isolation_forest_anomalies_detected}</div>
-            </div>
-          </div>
+          {/* System Status */}
+          <div className="glass-card">
+            <h3 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+              <Server size={16} color="var(--primary)" /> État du Système
+            </h3>
 
-          <h4 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '16px', textTransform: 'uppercase' }}>Suivi de la dérive (Model Drift) - 24h</h4>
-          <div style={{ height: '220px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={driftData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorError" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="time" stroke="var(--surface-border)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                <YAxis stroke="var(--surface-border)" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--surface-border)', borderRadius: '8px' }} />
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--surface-border)" vertical={false} />
-                <Area type="monotone" dataKey="error" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorError)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Network size={16} color="var(--text-muted)" />
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Disponibilité API</span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.api_uptime}</span>
+              </div>
 
-        {/* System & API Status */}
-        <div className="glass-card">
-          <h3 style={{ fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
-            <Server size={18} color="var(--primary)" /> État du Système
-          </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Database size={16} color="var(--text-muted)" />
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Base de Données</span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.database_status}</span>
+              </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--surface-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Network size={20} color="var(--text-muted)" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShieldAlert size={16} color="var(--text-muted)" />
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Registre d'Audit</span>
+                </div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.blockchain_ledger}</span>
+              </div>
+
+              <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '12px', borderRadius: '8px', marginTop: '4px', display: 'flex', gap: '10px' }}>
+                <CheckCircle color="#10B981" size={18} style={{ flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>Disponibilité API</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latence: {data.system.avg_latency_ms} ms</div>
+                  <div style={{ fontWeight: 700, fontSize: '11px', color: '#10B981', marginBottom: '2px' }}>Systèmes Opérationnels</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latence API: {data.system.avg_latency_ms}ms.</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#10B981' }}>
-                <CheckCircle size={14} /> {data.system.api_uptime}
-              </div>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--surface-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Database size={20} color="var(--text-muted)" />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>Base de Données</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Supabase Postgres</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#10B981' }}>
-                <CheckCircle size={14} /> {data.system.database_status}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px solid var(--surface-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <ShieldAlert size={20} color="var(--text-muted)" />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>Registre d'Audit</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Empreinte cryptographique</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#10B981' }}>
-                <CheckCircle size={14} /> {data.system.blockchain_ledger}
-              </div>
-            </div>
-            
-            <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '16px', borderRadius: '8px', marginTop: '8px', display: 'flex', gap: '12px' }}>
-              <AlertTriangle color="#EF4444" size={20} style={{ flexShrink: 0 }} />
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '12px', color: '#EF4444', marginBottom: '4px' }}>Alerte Système (Test)</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Le noeud A-12 (Zone Nord) montre une latence élevée depuis 4h.</div>
-              </div>
-            </div>
-
           </div>
         </div>
 
@@ -220,16 +282,16 @@ export default function AdminDashboardPage() {
 
       {/* Toast Notification */}
       {notification && (
-        <div style={{ 
-          position: 'fixed', 
-          bottom: '32px', 
-          right: '32px', 
-          backgroundColor: 'var(--foreground)', 
-          color: 'var(--background)', 
-          padding: '16px 24px', 
-          borderRadius: '8px', 
-          fontWeight: 600, 
-          zIndex: 1000, 
+        <div style={{
+          position: 'fixed',
+          bottom: '32px',
+          right: '32px',
+          backgroundColor: 'var(--foreground)',
+          color: 'var(--background)',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          fontWeight: 600,
+          zIndex: 1000,
           boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
           display: 'flex',
           alignItems: 'center',
@@ -240,7 +302,8 @@ export default function AdminDashboardPage() {
           {notification}
         </div>
       )}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}} />
     </div>

@@ -8,6 +8,12 @@ export default function AppareilsPage() {
   const router = useRouter();
   const [appareils, setAppareils] = useState<any[]>([]);
   const [totalPower, setTotalPower] = useState(0);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
   useEffect(() => {
     fetchMachines();
     const interval = setInterval(fetchMachines, 5000);
@@ -50,7 +56,7 @@ export default function AppareilsPage() {
   const triggerFakeAlert = async () => {
     try {
       if (appareils.length === 0) {
-        alert("Ajoutez d'abord une machine avant de simuler une alerte.");
+        showToast("Ajoutez d'abord une machine avant de simuler une alerte.");
         return;
       }
       // On prend la première machine saine
@@ -121,16 +127,16 @@ export default function AppareilsPage() {
         {appareils.map((app) => (
           <div key={app.id} className="glass-card" style={{ 
             padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column',
-            borderTop: `4px solid ${app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? '#DC2626' : 'var(--surface-border)'}`,
-            backgroundColor: app.status === 'alerte' ? '#FEF2F2' : app.status === 'hors ligne' ? '#F8FAFC' : '#FFFFFF',
-            borderColor: app.status === 'alerte' ? '#FCA5A5' : 'var(--surface-border)'
+            borderTop: `4px solid ${app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? 'var(--danger)' : 'var(--surface-border)'}`,
+            backgroundColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.05)' : app.status === 'hors ligne' ? 'rgba(255, 255, 255, 0.01)' : 'transparent',
+            borderColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.2)' : 'var(--surface-border)'
           }}>
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? '#DC2626' : 'var(--surface-border)' }}></div>
-                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em', color: app.status === 'alerte' ? '#DC2626' : 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? 'var(--danger)' : 'var(--text-muted)' }}></div>
+                    <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.05em', color: app.status === 'alerte' ? 'var(--danger)' : 'var(--text-muted)', textTransform: 'uppercase' }}>
                       {app.status}
                     </div>
                   </div>
@@ -143,11 +149,11 @@ export default function AppareilsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{app.status === 'hors ligne' ? 'Dernière Activité' : app.status === 'alerte' ? app.metric1Label : 'Puissance Nominale'}</span>
-                  <span style={{ fontWeight: 600, color: app.metric1Color }}>{app.status === 'actif' ? app.power : app.metric1Value}</span>
+                  <span style={{ fontWeight: 600, color: app.status === 'alerte' ? '#f87171' : app.metric1Color }}>{app.status === 'actif' ? app.power : app.metric1Value}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{app.status === 'hors ligne' ? 'Cycle de Maintenance' : app.status === 'alerte' ? 'Optimisation IA' : app.metric1Label}</span>
-                  <span style={{ fontWeight: 600, color: app.status === 'alerte' ? '#DC2626' : app.status === 'hors ligne' ? 'var(--primary)' : app.metric1Color }}>
+                  <span style={{ fontWeight: 600, color: app.status === 'alerte' ? 'var(--danger)' : app.status === 'hors ligne' ? 'var(--primary)' : app.metric1Color }}>
                     {app.status === 'alerte' ? app.alertType : app.status === 'hors ligne' ? app.offlineStatus : app.metric1Value}
                   </span>
                 </div>
@@ -164,21 +170,21 @@ export default function AppareilsPage() {
               </div>
             </div>
 
-            <div style={{ marginTop: 'auto', padding: '16px', borderTop: `1px solid ${app.status === 'alerte' ? '#FCA5A5' : 'var(--surface-border)'}`, backgroundColor: app.status === 'alerte' ? '#fff' : 'transparent' }}>
+            <div style={{ marginTop: 'auto', padding: '16px', borderTop: `1px solid ${app.status === 'alerte' ? 'rgba(239, 68, 68, 0.2)' : 'var(--surface-border)'}`, backgroundColor: 'transparent' }}>
               {app.status === 'alerte' ? (
-                <button onClick={() => router.push('/dashboard/predictions')} className="btn-primary" style={{ backgroundColor: '#DC2626', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', border: 'none', cursor: 'pointer' }}>
+                <button onClick={() => router.push('/dashboard/predictions')} className="btn-primary" style={{ backgroundColor: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', border: 'none', cursor: 'pointer' }}>
                   <AlertTriangle size={16} /> Lancer Diagnostic d'Urgence
                 </button>
               ) : app.status === 'hors ligne' ? (
-                <button className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#F8FAFC' }}>
+                <button className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                   <RotateCcw size={16} /> Réveiller le Système
                 </button>
               ) : (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', backgroundColor: '#F8F9FA' }}>
+                  <button className="btn-secondary" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                     <Activity size={16} /> Diagnostics
                   </button>
-                  <button className="btn-secondary" style={{ width: '48px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}>
+                  <button className="btn-secondary" style={{ width: '48px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <RotateCcw size={16} />
                   </button>
                 </div>
@@ -243,6 +249,37 @@ export default function AppareilsPage() {
           </div>
         </div>
       )}
+
+      {/* Beautiful Toast Notification */}
+      {toastMessage && (
+        <div style={{ 
+          position: 'fixed', 
+          bottom: '32px', 
+          right: '32px', 
+          backgroundColor: '#ef4444', 
+          color: '#fff', 
+          padding: '16px 24px', 
+          borderRadius: '12px', 
+          fontWeight: 600, 
+          zIndex: 99999, 
+          boxShadow: '0 10px 30px rgba(239, 68, 68, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: 'fadeInUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+        }}>
+          <span style={{ fontSize: '18px' }}>⚠</span>
+          {toastMessage}
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
     </div>
   );
 }

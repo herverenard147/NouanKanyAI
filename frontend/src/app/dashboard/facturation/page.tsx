@@ -41,8 +41,8 @@ export default function FacturationPage() {
   }, []);
 
   const pieData = [
-    { name: 'Retained Savings (90%)', value: 90, color: '#0F7244' },
-    { name: 'Gain-Share Commission (10%)', value: 10, color: '#E2E8F0' },
+    { name: 'Retained Savings (90%)', value: 90, color: '#10b981' },
+    { name: 'Gain-Share Commission (10%)', value: 10, color: '#06b6d4' },
   ];
 
   return (
@@ -51,7 +51,7 @@ export default function FacturationPage() {
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
           <span style={{ color: 'var(--primary)' }}>Entreprise</span> / Facturation & Transparence
         </div>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Portail de Transparence Financière</h1>
+        <h1 className="text-gradient" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>Portail de Transparence Financière</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
           Audit en temps réel du modèle de partage à 10% (Gain-Share) sur les économies industrielles.
         </p>
@@ -62,15 +62,15 @@ export default function FacturationPage() {
         <div className="facturation-left-col">
           
           {/* Main Savings Card */}
-          <div className="glass-card" style={{ padding: '32px' }}>
+          <div className="glass-card glow-card" style={{ padding: '32px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>Économies Totales Vérifiées (Ce Mois)</div>
-                <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'Inter, sans-serif' }}>
+                <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--primary)', fontFamily: 'Outfit, sans-serif' }}>
                   {grossSavings.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} <span style={{ fontSize: '16px', color: 'var(--text-muted)', fontWeight: 600 }}>FCFA</span>
                 </div>
               </div>
-              <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 700 }}>
+              <div style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '4px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 700 }}>
                 ↗ Dynamique (API)
               </div>
             </div>
@@ -78,9 +78,19 @@ export default function FacturationPage() {
             <div style={{ height: '200px', width: '100%', marginBottom: '24px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                  <Bar dataKey="savings" fill="var(--primary)" radius={[4, 4, 0, 0]}>
+                  <defs>
+                    <linearGradient id="primaryGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.2}/>
+                    </linearGradient>
+                    <linearGradient id="primaryGradDim" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.4}/>
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.05}/>
+                    </linearGradient>
+                  </defs>
+                  <Bar dataKey="savings" radius={[4, 4, 0, 0]}>
                     {barData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === barData.length - 1 ? '#0F7244' : '#88C0A6'} />
+                      <Cell key={`cell-${index}`} fill={index === barData.length - 1 ? 'url(#primaryGrad)' : 'url(#primaryGradDim)'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -158,7 +168,7 @@ export default function FacturationPage() {
           <div className="glass-card">
             <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '24px', textTransform: 'uppercase' }}>Règlement Automatisé</h3>
             
-            <div style={{ border: '1px solid var(--primary-light)', backgroundColor: 'rgba(230,244,234,0.3)', borderRadius: '8px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ border: '1px solid var(--primary-light)', backgroundColor: 'var(--primary-dim)', borderRadius: '8px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{ width: '32px', height: '24px', backgroundColor: '#000', borderRadius: '4px' }}></div>
                 <div>
