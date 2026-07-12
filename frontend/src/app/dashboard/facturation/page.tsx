@@ -98,8 +98,8 @@ export default function FacturationPage() {
               </ResponsiveContainer>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid var(--surface-border)', paddingTop: '24px' }}>
-              <div style={{ display: 'flex', gap: '48px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid var(--surface-border)', paddingTop: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '48px', flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Économies Brutes</div>
                   <div style={{ fontSize: '16px', fontWeight: 700 }}>{grossSavings.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} FCFA</div>
@@ -117,8 +117,8 @@ export default function FacturationPage() {
 
           {/* Audit Trail */}
           <div className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Journal d'Audit</h3>
                 <span style={{ fontSize: '10px', backgroundColor: 'var(--surface-hover)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-muted)' }}>0xDF_..A826 AFX</span>
               </div>
@@ -127,6 +127,7 @@ export default function FacturationPage() {
               </div>
             </div>
 
+            <div style={{ overflowX: 'auto' }}>
             <table className="audit-table">
               <thead>
                 <tr>
@@ -155,7 +156,8 @@ export default function FacturationPage() {
                 )}
               </tbody>
             </table>
-            
+            </div>
+
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
               <a href="#" onClick={(e) => { e.preventDefault(); showNotification("Connexion à l'explorateur de noeuds en cours..."); }} style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
             </div>

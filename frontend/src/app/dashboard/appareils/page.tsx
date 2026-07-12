@@ -104,14 +104,14 @@ export default function AppareilsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Équipements Enregistrés</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
             Surveillance en temps réel et diagnostics IA sur <strong>{appareils.length} équipements actifs</strong>.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <button className="btn-secondary" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', borderColor: 'var(--primary)', color: 'var(--foreground)' }} onClick={() => { fetchSites(); setIsMediaModalOpen(true); }}>
             📷 Analyser Flux Vidéo (IA)
           </button>

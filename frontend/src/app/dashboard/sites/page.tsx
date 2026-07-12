@@ -93,7 +93,7 @@ export default function SitesPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header-row" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
             <span style={{ color: 'var(--primary)' }}>Infrastructure</span> / Gestion des Sites
