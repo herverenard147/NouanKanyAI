@@ -75,7 +75,7 @@ export default function DashboardPage() {
           const recRes = await fetch(`${API_URL}/api/recommend`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ state: data })
+            body: JSON.stringify(data)
           });
           const recData = await recRes.json();
           if (recData.recommendations && recData.recommendations.length > 0) {
