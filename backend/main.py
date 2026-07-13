@@ -3,7 +3,7 @@ main.py — API FastAPI pour exposer les modèles d'IA au frontend React.
 Endpoints: /api/predict, /api/anomaly, /api/recommend
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +38,7 @@ def call_gemini(payload: dict, timeout: int = 25, retries: int = 1) -> dict:
 
 from db import engine, Base, get_db
 import models_db as models
+import equipment_catalog
 from auth import hash_password, verify_password, create_access_token, get_current_user_id
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -52,6 +53,10 @@ if engine is not None:
             conn.execute(text(
                 "ALTER TABLE machines ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id)"
             ))
+            conn.execute(text("ALTER TABLE machines ADD COLUMN IF NOT EXISTS categorie VARCHAR"))
+            conn.execute(text("ALTER TABLE machines ADD COLUMN IF NOT EXISTS marque VARCHAR"))
+            conn.execute(text("ALTER TABLE machines ADD COLUMN IF NOT EXISTS modele VARCHAR"))
+            conn.execute(text("ALTER TABLE machines ADD COLUMN IF NOT EXISTS numero_serie VARCHAR"))
         print("[OK] Connecté à PostgreSQL, tables synchronisées.")
     except Exception as e:
         print(f"[ERROR] Erreur PostgreSQL: {e}")
@@ -108,6 +113,9 @@ def load_models():
 class SensorReading(BaseModel):
     machine_id: str
     nom: Optional[str] = None
+    categorie: Optional[str] = None
+    marque: Optional[str] = None
+    modele: Optional[str] = None
     power_kw: float
     temperature_c: float
     vibration_hz: float
@@ -275,8 +283,17 @@ def get_machines(user_id: str = Depends(get_current_user_id), db: Session = Depe
             "pressure_bar": metric.pressure_bar if metric else 1.0,
             "status": mach.status,
             "priority": mach.priority,
+            "categorie": mach.categorie,
+            "marque": mach.marque,
+            "modele": mach.modele,
+            "numero_serie": mach.numero_serie,
         })
     return result
+
+@app.get("/api/equipment-catalog")
+def get_equipment_catalog():
+    """Retourne le catalogue d'équipements (catégorie -> marque -> modèles) pour le formulaire d'ajout."""
+    return equipment_catalog.get_catalog_tree()
 
 @app.get("/api/facturation")
 def get_facturation(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -393,22 +410,43 @@ def get_admin_metrics(db: Session = Depends(get_db)):
 
 class NewMachine(BaseModel):
     nom: str
-    power_kw: float
+    power_kw: Optional[float] = None
+    categorie: Optional[str] = None
+    marque: Optional[str] = None
+    modele: Optional[str] = None
+    numero_serie: Optional[str] = None
     quantite: Optional[int] = 1
     site_id: Optional[str] = None
 
 @app.post("/api/machines")
 def add_machine(machine: NewMachine, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    """Ajoute des machines pour l'utilisateur connecté."""
+    """Ajoute des machines pour l'utilisateur connecté.
+
+    La puissance nominale est déterminée automatiquement à partir du catalogue
+    (catégorie + marque + modèle) si fourni, sinon on utilise power_kw en saisie libre.
+    """
+    power_kw = machine.power_kw
+    if machine.categorie and machine.marque and machine.modele:
+        looked_up = equipment_catalog.lookup(machine.categorie, machine.marque, machine.modele)
+        if looked_up:
+            power_kw = looked_up["puissance_kw"]
+
+    if power_kw is None:
+        return {"error": "Puissance non déterminée : choisissez un modèle du catalogue ou indiquez une puissance manuelle."}
+
     added_machines = []
     for _ in range(machine.quantite):
         code = f"NEW-{uuid.uuid4().hex[:6].upper()}"
         new_mach = models.Machine(
             code_interne=code,
             nom=machine.nom,
-            puissance_nominale_kw=machine.power_kw,
+            puissance_nominale_kw=power_kw,
             status="actif",
             priority="moyenne",
+            categorie=machine.categorie,
+            marque=machine.marque,
+            modele=machine.modele,
+            numero_serie=machine.numero_serie,
             site_id=machine.site_id if machine.site_id else None,
             user_id=user_id,
         )
@@ -418,7 +456,7 @@ def add_machine(machine: NewMachine, user_id: str = Depends(get_current_user_id)
 
         metric = models.SensorMetric(
             machine_id=new_mach.id,
-            power_kw=machine.power_kw,
+            power_kw=power_kw,
             temperature_c=35.0,
             vibration_hz=1.5,
             pressure_bar=1.0,
@@ -429,7 +467,7 @@ def add_machine(machine: NewMachine, user_id: str = Depends(get_current_user_id)
         added_machines.append({
             "machine_id": code,
             "nom": machine.nom,
-            "power_kw": machine.power_kw,
+            "power_kw": power_kw,
             "temperature_c": 35.0,
             "vibration_hz": 1.5,
             "pressure_bar": 1.0,
@@ -553,14 +591,43 @@ def check_anomaly(reading: SensorReading):
     return {"machine_id": reading.machine_id, **result}
 
 @app.post("/api/recommend")
-def get_recommendations(machines: List[SensorReading]):
-    """Génère des recommandations basées sur l'état actuel des machines."""
+def get_recommendations(machines: List[SensorReading], db: Session = Depends(get_db)):
+    """Génère des recommandations basées sur l'état actuel des machines.
+
+    Les actions à faible risque (délestage préventif sur une machine de
+    priorité basse) sont exécutées automatiquement par l'IA et journalisées
+    dans le registre d'audit. Toute alerte (anomalie, surchauffe) reste une
+    action humaine : l'IA ne coupe jamais un équipement en défaut toute seule.
+    """
     if xgb_data is None or iso_data is None:
         return {"error": "Les modèles ne sont pas chargés. Entraînez-les d'abord."}
 
     from ml.recommendation_engine import generate_recommendations
     machines_state = [m.model_dump() for m in machines]
     recs = generate_recommendations(xgb_data, iso_data, machines_state)
+
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    for rec in recs:
+        if rec['type'] == 'délestage':
+            # Action à faible risque : l'IA l'exécute directement et la trace dans l'audit
+            # (une seule fois par heure et par machine, pour ne pas spammer le registre
+            # vu que /api/recommend est appelé toutes les quelques secondes par le frontend).
+            rec['auto_resolu'] = True
+            already_logged = db.query(models.AuditLog).filter(
+                models.AuditLog.ref_hash == rec['machine_id'],
+                models.AuditLog.action.like("Délestage automatique%"),
+                models.AuditLog.timestamp >= one_hour_ago,
+            ).first()
+            if not already_logged:
+                db.add(models.AuditLog(
+                    action=f"Délestage automatique — {rec['title']}",
+                    ref_hash=rec['machine_id'],
+                    status="Résolu par l'IA",
+                ))
+        else:
+            rec['auto_resolu'] = False
+    db.commit()
+
     return {"recommendations": recs, "count": len(recs)}
 
 class ChatRequest(BaseModel):

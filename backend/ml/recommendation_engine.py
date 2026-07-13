@@ -7,6 +7,11 @@ des actions concrètes de réduction de consommation.
 import pandas as pd
 import numpy as np
 import joblib
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import equipment_catalog
 
 # Tarif CIE Côte d'Ivoire (FCFA/kWh) - moyenne
 TARIF_KWH = 65  # FCFA par kWh
@@ -181,7 +186,29 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
                 'action': f"Éteignez {nom} immédiatement et lancez une inspection",
                 'gain_fcfa': 0
             })
-    
+
+        # Règle 4: Conseil proactif d'efficacité — un modèle plus économe existe
+        # dans la même catégorie (indépendant de l'état actuel de la machine).
+        categorie = machine.get('categorie')
+        marque = machine.get('marque')
+        if categorie and marque:
+            alt = equipment_catalog.find_efficient_alternative(categorie, marque)
+            if alt:
+                alt_marque, indice_actuel, indice_alt = alt
+                gain_pct = round((1 - indice_alt / indice_actuel) * 100)
+                gain = round(machine['power_kw'] * 24 * 30 * TARIF_KWH * (indice_actuel - indice_alt) / indice_actuel)
+                recommendations.append({
+                    'machine_id': mid,
+                    'type': 'efficacite',
+                    'severity': 'faible',
+                    'title': f"Alternative plus économe pour {nom}",
+                    'description': f"{nom} ({marque}) est un modèle {categorie.lower()} qui consomme "
+                                  f"plus que nécessaire pour ce type de tâche. Un équipement {alt_marque} "
+                                  f"de même catégorie consomme en moyenne {gain_pct}% de moins pour un usage équivalent.",
+                    'action': f"Envisagez de remplacer {nom} par un modèle {alt_marque} plus économe",
+                    'gain_fcfa': gain
+                })
+
     # Trier par sévérité
     severity_order = {'critique': 0, 'modérée': 1, 'faible': 2}
     recommendations.sort(key=lambda x: severity_order.get(x['severity'], 3))

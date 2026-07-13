@@ -55,14 +55,18 @@ export default function AppareilsPage() {
         status: m.status,
         power: m.status === 'actif' ? `${m.power_kw} kW` : 'N/A',
         power_raw: m.power_kw,
-        metric1Label: 'Température', 
-        metric1Value: `${m.temperature_c.toFixed(1)}°C`, 
+        temperature_raw: m.temperature_c,
+        vibration_raw: m.vibration_hz,
+        metric1Label: 'Température',
+        metric1Value: `${m.temperature_c.toFixed(1)}°C`,
         metric1Color: m.temperature_c > 60 ? '#DC2626' : 'var(--foreground)',
         metric2Label: 'Vibrations', 
         metric2Value: `${m.vibration_hz.toFixed(1)} Hz`, 
         metric2Progress: m.vibration_hz > 20 ? 100 : (m.vibration_hz / 20) * 100, 
         metric2Color: m.vibration_hz > 20 ? '#DC2626' : 'var(--primary)',
         alertType: m.status === 'alerte' ? 'Intervention Requise' : '',
+        marque: m.marque,
+        modele: m.modele,
         icon: m.status === 'alerte' ? <AlertOctagon size={24} color="#DC2626" /> : <ActivitySquare size={24} color="var(--primary)" />
       }));
       setAppareils(mapped);
@@ -84,6 +88,24 @@ export default function AppareilsPage() {
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [diagnosticsData, setDiagnosticsData] = useState<any>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [catalog, setCatalog] = useState<any>({});
+  const [selectedCategorie, setSelectedCategorie] = useState('');
+  const [selectedMarque, setSelectedMarque] = useState('');
+  const [selectedModele, setSelectedModele] = useState('');
+  const [manualMode, setManualMode] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/equipment-catalog`)
+      .then(res => res.json())
+      .then(setCatalog)
+      .catch(err => console.error("Erreur de chargement du catalogue", err));
+  }, []);
+
+  const marquesForCategorie = selectedCategorie ? Object.keys(catalog[selectedCategorie] || {}) : [];
+  const modelesForMarque = (selectedCategorie && selectedMarque)
+    ? (catalog[selectedCategorie]?.[selectedMarque]?.modeles || [])
+    : [];
+  const selectedModelePuissance = modelesForMarque.find((m: any) => m.nom === selectedModele)?.puissance_kw;
 
   const openDiagnostics = async (machineId: string) => {
     setIsDiagnosticsOpen(true);
@@ -127,9 +149,17 @@ export default function AppareilsPage() {
     }
   };
 
-  const filteredAppareils = filterSiteId 
+  // Score de criticité : alerte (plus la température/vibration est élevée, plus c'est critique) > actif > hors ligne
+  const criticality = (app: any) => {
+    if (app.status === 'alerte') return 1000 + app.temperature_raw + app.vibration_raw;
+    if (app.status === 'actif') return 0;
+    return -1000;
+  };
+
+  const filteredAppareils = (filterSiteId
     ? appareils.filter(app => app.site_id === filterSiteId)
-    : appareils;
+    : appareils
+  ).slice().sort((a, b) => criticality(b) - criticality(a));
 
   return (
     <div>
@@ -245,6 +275,9 @@ export default function AppareilsPage() {
                     </div>
                   </div>
                   <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--foreground)' }}>{app.nom}</h3>
+                  {(app.marque || app.modele) && (
+                    <div style={{ fontSize: '11px', color: 'var(--primary)', marginTop: '2px', fontWeight: 600 }}>{app.marque} {app.modele}</div>
+                  )}
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: 500 }}>📍 Site : {app.site_nom}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>ID Actif: #{app.id}</div>
                 </div>
@@ -314,18 +347,36 @@ export default function AppareilsPage() {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               const name = formData.get('nom') as string;
-              const power = formData.get('puissance') as string;
               const quantity = formData.get('quantite') as string;
               const siteId = formData.get('site_id') as string;
-              if(!name || !power || !quantity || !siteId) return;
+              const numeroSerie = formData.get('numero_serie') as string;
+              const manualPower = formData.get('puissance') as string;
+
+              if (!name || !quantity || !siteId) return;
+              if (manualMode && !manualPower) return;
+              if (!manualMode && (!selectedCategorie || !selectedMarque || !selectedModele)) return;
 
               try {
-                await fetch(`${API_URL}/api/machines`, {
+                const res = await fetch(`${API_URL}/api/machines`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', ...authHeaders() },
-                  body: JSON.stringify({ nom: name, power_kw: parseFloat(power), quantite: parseInt(quantity), site_id: siteId })
+                  body: JSON.stringify({
+                    nom: name,
+                    quantite: parseInt(quantity),
+                    site_id: siteId,
+                    numero_serie: numeroSerie || null,
+                    ...(manualMode
+                      ? { power_kw: parseFloat(manualPower) }
+                      : { categorie: selectedCategorie, marque: selectedMarque, modele: selectedModele }),
+                  })
                 });
+                const json = await res.json();
+                if (json.error) {
+                  showToast(json.error);
+                  return;
+                }
                 setIsModalOpen(false);
+                setSelectedCategorie(''); setSelectedMarque(''); setSelectedModele(''); setManualMode(false);
                 fetchMachines(); // Refresh immediately
               } catch (err) {
                 console.error("Erreur d'ajout", err);
@@ -350,18 +401,95 @@ export default function AppareilsPage() {
                   </div>
                 )}
               </div>
-              
+
+              {!manualMode ? (
+                <>
+                  <div className="input-group">
+                    <label className="input-label">Type d'appareil</label>
+                    <select
+                      className="input-field"
+                      value={selectedCategorie}
+                      onChange={(e) => { setSelectedCategorie(e.target.value); setSelectedMarque(''); setSelectedModele(''); }}
+                      required
+                      style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                    >
+                      <option value="">-- Sélectionner un type --</option>
+                      {Object.keys(catalog).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid-2-equal">
+                    <div className="input-group">
+                      <label className="input-label">Marque</label>
+                      <select
+                        className="input-field"
+                        value={selectedMarque}
+                        onChange={(e) => { setSelectedMarque(e.target.value); setSelectedModele(''); }}
+                        required
+                        disabled={!selectedCategorie}
+                        style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                      >
+                        <option value="">-- Marque --</option>
+                        {marquesForCategorie.map(m => (
+                          <option key={m} value={m}>{m} {catalog[selectedCategorie][m].efficacite === 'haute' ? '🌱' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Modèle</label>
+                      <select
+                        className="input-field"
+                        value={selectedModele}
+                        onChange={(e) => setSelectedModele(e.target.value)}
+                        required
+                        disabled={!selectedMarque}
+                        style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                      >
+                        <option value="">-- Modèle --</option>
+                        {modelesForMarque.map((m: any) => (
+                          <option key={m.nom} value={m.nom}>{m.nom} ({m.puissance_kw} kW)</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {selectedModelePuissance && (
+                    <div style={{ fontSize: '12px', color: 'var(--primary)', marginTop: '-8px', marginBottom: '16px' }}>
+                      Puissance nominale déterminée automatiquement : <strong>{selectedModelePuissance} kW</strong>
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <span onClick={() => setManualMode(true)} style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer' }}>
+                      Mon équipement n'est pas dans la liste — saisir la puissance manuellement
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="input-group">
+                    <label className="input-label">Puissance (kW)</label>
+                    <input type="number" name="puissance" className="input-field" placeholder="Ex: 150" min="0.1" step="0.1" required />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <span onClick={() => setManualMode(false)} style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer' }}>
+                      Choisir un modèle du catalogue à la place
+                    </span>
+                  </div>
+                </>
+              )}
+
               <div className="grid-2-equal">
                 <div className="input-group">
-                  <label className="input-label">Puissance (kW)</label>
-                  <input type="number" name="puissance" className="input-field" placeholder="Ex: 150" min="0.1" step="0.1" required />
+                  <label className="input-label">N° de série (optionnel)</label>
+                  <input type="text" name="numero_serie" className="input-field" placeholder="Ex: SN-2024-0198" />
                 </div>
                 <div className="input-group">
                   <label className="input-label">Quantité</label>
                   <input type="number" name="quantite" className="input-field" defaultValue="1" min="1" required />
                 </div>
               </div>
-              
+
               <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
                 <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Annuler</button>
                 <button type="submit" className="btn-primary">Ajouter</button>

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X, User as UserIcon } from 'lucide-react';
 import { signOut, getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import ChatWidget from './ChatWidget';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -337,6 +338,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       )}
+
+      <ChatWidget />
     </div>
   );
 }
