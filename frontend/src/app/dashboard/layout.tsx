@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Factory, Plug, Bot, Receipt, Settings, LogOut, Zap, Menu, X, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Factory, Plug, Bot, Receipt, LogOut, Zap, Menu, X, User as UserIcon } from 'lucide-react';
 import { signOut, getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 import ChatWidget from './ChatWidget';
@@ -85,9 +85,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/appareils',    label: 'Appareils',       icon: Plug },
     { href: '/dashboard/predictions',  label: 'Assistant IA',    icon: Bot },
     { href: '/dashboard/facturation',  label: 'Facturation',     icon: Receipt },
-    // Réservé aux comptes avec un rôle plateforme (admin/superadmin) — un client normal
-    // ne voit même pas ce lien, il n'a plus juste un accès qui échouerait silencieusement.
-    ...(user.platform_role ? [{ href: '/dashboard/admin', label: 'Admin', icon: Settings }] : []),
   ];
 
   return (
@@ -236,6 +233,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Right badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {user.platform_role && (
+              <Link href="/admin-portal" style={{
+                fontSize: '11px', fontWeight: 700, color: '#F59E0B',
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                padding: '5px 12px', borderRadius: '20px',
+                textDecoration: 'none'
+              }}>
+                Portail Admin →
+              </Link>
+            )}
             <div style={{
               fontSize: '11px', fontWeight: 700, color: '#10b981',
               background: 'rgba(16,185,129,0.08)',
