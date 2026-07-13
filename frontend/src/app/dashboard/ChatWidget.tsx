@@ -169,7 +169,7 @@ export default function ChatWidget() {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--surface-border)', outline: 'none', color: 'var(--foreground)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--surface-border)', outline: 'none', color: 'var(--foreground)', backgroundColor: 'var(--background-alt)', fontSize: '13px' }}
             />
             <button onClick={handleSend} style={{ backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
               <Send size={16} />
