@@ -7,30 +7,35 @@
  ============================================= */
 
 :root {
-  /* === DASHBOARD DARK THEME === */
-  --background:     #030712;
-  --background-alt: #090d16;
-  --foreground:     #f3f4f6;
-  --text-muted:     #9ca3af;
-  --text-subtle:    #d1d5db;
+  /* === DASHBOARD LIGHT THEME === */
+  --background:     #f8fafc;
+  --background-alt: #ffffff;
+  --foreground:     #0f172a;
+  --text-muted:     #64748b;
+  --text-subtle:    #334155;
 
   --primary:        #10b981;
   --primary-dim:    rgba(16, 185, 129, 0.08);
-  --primary-light:  rgba(16, 185, 129, 0.15);
-  --primary-hover:  #34d399;
+  --primary-light:  rgba(16, 185, 129, 0.14);
+  --primary-hover:  #059669;
 
-  --secondary:      #06b6d4;
+  --secondary:      #0891b2;
   --accent:         #f59e0b;
   --danger:         #ef4444;
-  --danger-dim:     rgba(239, 68, 68, 0.1);
+  --danger-dim:     rgba(239, 68, 68, 0.08);
 
-  --surface:        rgba(17, 24, 39, 0.45);
-  --surface-2:      rgba(31, 41, 55, 0.6);
-  --surface-border: rgba(255, 255, 255, 0.08);
-  --surface-hover:  rgba(255, 255, 255, 0.04);
+  --surface:        rgba(15, 23, 42, 0.025);
+  --surface-2:      rgba(15, 23, 42, 0.05);
+  --surface-border: rgba(15, 23, 42, 0.09);
+  --surface-hover:  rgba(15, 23, 42, 0.035);
 
-  --sidebar-bg:     #050811;
-  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-bg:     #ffffff;
+  --sidebar-border: rgba(15, 23, 42, 0.08);
+
+  /* Panneaux opaques (modales, menus déroulants) : remplacent les anciens
+     #0f172a / #1e293b codés en dur qui supposaient un thème sombre. */
+  --surface-solid:  #ffffff;
+  --input-bg:       #f1f5f9;
 }
 
 * {
@@ -63,15 +68,15 @@ a { color: inherit; text-decoration: none; }
    CARDS — Premium Glass Dark
  ============================================= */
 .glass-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.005) 100%);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--surface-border);
   border-radius: 16px;
   padding: 24px;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 
-    0 1px 0 0 rgba(255,255,255,0.05) inset,
-    0 4px 30px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 1px 0 0 rgba(255,255,255,0.6) inset,
+    0 4px 24px rgba(15, 23, 42, 0.06);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -82,15 +87,15 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background: linear-gradient(90deg, transparent, rgba(15,23,42,0.06), transparent);
 }
 
 .glass-card:hover {
-  border-color: rgba(16, 185, 129, 0.25);
-  box-shadow: 
-    0 1px 0 0 rgba(255,255,255,0.08) inset,
-    0 12px 40px rgba(0,0,0,0.5),
-    0 0 20px rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow:
+    0 1px 0 0 rgba(255,255,255,0.7) inset,
+    0 12px 32px rgba(15,23,42,0.08),
+    0 0 20px rgba(16, 185, 129, 0.08);
   transform: translateY(-2px);
 }
 
@@ -128,7 +133,7 @@ a { color: inherit; text-decoration: none; }
   padding: 12px 20px;
   border-radius: 8px;
   border: 1px solid var(--surface-border);
-  background: rgba(255, 255, 255, 0.01);
+  background: rgba(15, 23, 42, 0.015);
   color: var(--text-subtle);
   font-family: 'Outfit', sans-serif;
   font-size: 14px;
@@ -138,8 +143,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .btn-secondary:hover {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(15,23,42,0.05);
+  border-color: rgba(15,23,42,0.16);
   color: var(--foreground);
 }
 
@@ -198,7 +203,7 @@ a { color: inherit; text-decoration: none; }
   width: 100%; padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid var(--surface-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.8);
   color: var(--foreground);
   font-family: inherit; font-size: 14px;
   transition: all 0.2s ease;
@@ -206,8 +211,8 @@ a { color: inherit; text-decoration: none; }
 .input-field:focus {
   outline: none;
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
 }
 .input-field::placeholder { color: var(--text-muted); }
 
@@ -265,7 +270,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(15, 23, 42, 0.04);
   color: var(--foreground);
 }
 
@@ -335,21 +340,21 @@ a { color: inherit; text-decoration: none; }
  ============================================= */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.14); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(15,23,42,0.22); }
 
 
 /* =============================================
    PREMIUM UTILITIES & GLOWS
  ============================================= */
 .text-gradient {
-  background: linear-gradient(135deg, #ffffff 30%, #a7f3d0 100%);
+  background: linear-gradient(135deg, #0f172a 20%, #059669 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-secondary {
-  background: linear-gradient(135deg, #ffffff 30%, #a5f3fc 100%);
+  background: linear-gradient(135deg, #0f172a 20%, #0891b2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -647,8 +652,8 @@ a { color: inherit; text-decoration: none; }
 }
 
 .modal-content.dark {
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--surface-solid);
+  border: 1px solid var(--surface-border);
   border-radius: 24px;
   width: 100%;
   max-width: 440px;
@@ -658,7 +663,7 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   transform: translateY(40px) scale(0.95);
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.25);
 }
 
 @media (max-width: 480px) {
@@ -672,29 +677,29 @@ a { color: inherit; text-decoration: none; }
 }
 
 .modal-content.dark h3 {
-  color: #fff;
+  color: var(--foreground);
   font-family: 'Outfit', sans-serif;
 }
 
-.modal-content.dark p { color: #94a3b8; }
-.modal-content.dark .input-label { color: #cbd5e1; }
+.modal-content.dark p { color: var(--text-muted); }
+.modal-content.dark .input-label { color: var(--text-subtle); }
 .modal-content.dark .input-field {
-  background: rgba(255,255,255,0.03);
-  border-color: rgba(255,255,255,0.1);
-  color: #fff;
+  background: var(--input-bg);
+  border-color: var(--surface-border);
+  color: var(--foreground);
 }
 .modal-content.dark .input-field:focus {
   border-color: #10b981;
-  background: rgba(255,255,255,0.06);
+  background: #ffffff;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
-/* Applique un fond sombre à la liste déroulante de tous les <select> de l'app
+/* Applique un fond clair à la liste déroulante de tous les <select> de l'app
    (pas seulement dans les modales d'auth) : sans ça, le navigateur affiche
-   la popup d'options en blanc par défaut, hors thème. */
+   la popup d'options avec ses couleurs par défaut, hors thème. */
 select.input-field option,
 .modal-content.dark select.input-field option {
-  background-color: #0f172a;
-  color: #fff;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 .modal-content.dark .modal-close {
   position: absolute;
@@ -708,7 +713,7 @@ select.input-field option,
   transition: color 0.2s, transform 0.2s;
 }
 .modal-content.dark .modal-close:hover {
-  color: #fff;
+  color: var(--foreground);
   transform: rotate(90deg);
 }
 
@@ -760,7 +765,7 @@ select.input-field option,
  ============================================= */
 .sidebar-overlay { display: none; }
 .sidebar-toggle { display: none; }
-.header-search { display: flex; align-items: center; gap: 10px; width: 360px; background: rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.07); }
+.header-search { display: flex; align-items: center; gap: 10px; width: 360px; background: rgba(15,23,42,0.035); border-radius: 8px; padding: 8px 14px; border: 1px solid rgba(15,23,42,0.08); }
 
 /* =============================================
    RESPONSIVE BREAKPOINTS
@@ -790,12 +795,12 @@ select.input-field option,
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(15,23,42,0.035);
+    border: 1px solid rgba(15,23,42,0.08);
     border-radius: 8px;
     width: 38px;
     height: 38px;
-    color: var(--foreground, #e2e8f0);
+    color: var(--foreground, #0f172a);
     cursor: pointer;
     flex-shrink: 0;
   }

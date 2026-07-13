@@ -1,13 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Factory, Plug, Bot, Receipt, LogOut, Zap, Menu, X, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Factory, Plug, Bot, Receipt, LogOut, Zap, Menu, X, User as UserIcon, Search, MapPin } from 'lucide-react';
 import { signOut, getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 import ChatWidget from './ChatWidget';
+
+const SEARCHABLE_PAGES = [
+  { href: '/dashboard',            label: 'Tableau de Bord' },
+  { href: '/dashboard/sites',       label: 'Sites' },
+  { href: '/dashboard/appareils',   label: 'Appareils' },
+  { href: '/dashboard/predictions', label: 'Assistant IA' },
+  { href: '/dashboard/facturation', label: 'Facturation' },
+];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -19,6 +27,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [profileTypeCompte, setProfileTypeCompte] = useState('Particulier');
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState('');
+
+  // Recherche globale (navbar) : pages, sites et appareils de l'utilisateur
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchMachines, setSearchMachines] = useState<any[]>([]);
+  const [searchSites, setSearchSites] = useState<any[]>([]);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadSearchData = async () => {
+      try {
+        const [machinesRes, sitesRes] = await Promise.all([
+          fetch(`${API_URL}/api/machines`, { headers: authHeaders() }),
+          fetch(`${API_URL}/api/sites`, { headers: authHeaders() }),
+        ]);
+        setSearchMachines(await machinesRes.json());
+        setSearchSites(await sitesRes.json());
+      } catch {
+        // silencieux : la recherche affichera simplement moins de résultats
+      }
+    };
+    loadSearchData();
+  }, []);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const q = searchQuery.trim().toLowerCase();
+  const matchedPages = q ? SEARCHABLE_PAGES.filter(p => p.label.toLowerCase().includes(q)) : [];
+  const matchedMachines = q ? searchMachines.filter(m =>
+    (m.nom || '').toLowerCase().includes(q) ||
+    (m.machine_id || '').toLowerCase().includes(q) ||
+    (m.categorie || '').toLowerCase().includes(q) ||
+    (m.marque || '').toLowerCase().includes(q)
+  ).slice(0, 6) : [];
+  const matchedSites = q ? searchSites.filter(s =>
+    (s.nom || '').toLowerCase().includes(q) || (s.localisation || '').toLowerCase().includes(q)
+  ).slice(0, 6) : [];
+  const hasResults = matchedPages.length > 0 || matchedMachines.length > 0 || matchedSites.length > 0;
+
+  const goToFirstResult = () => {
+    if (matchedPages[0]) router.push(matchedPages[0].href);
+    else if (matchedMachines[0]) router.push('/dashboard/appareils');
+    else if (matchedSites[0]) router.push('/dashboard/sites');
+    setSearchOpen(false);
+    setSearchQuery('');
+  };
 
   // Ferme la sidebar mobile à chaque changement de page
   useEffect(() => {
@@ -107,7 +169,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               style={{ objectFit: 'contain' }} 
             />
             <div>
-              <div style={{ color: '#e2e8f0', fontSize: '16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.01em' }}>
+              <div style={{ color: 'var(--foreground)', fontSize: '16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif', letterSpacing: '-0.01em' }}>
                 NouankanyAI
               </div>
               <div style={{ fontSize: '9px', fontWeight: 700, color: '#10b981', letterSpacing: '0.08em' }}>
@@ -130,7 +192,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Nav Label */}
-        <div style={{ padding: '20px 20px 8px', fontSize: '10px', fontWeight: 700, color: 'rgba(100,116,139,0.7)', letterSpacing: '0.1em', position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: '20px 20px 8px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', position: 'relative', zIndex: 1 }}>
           NAVIGATION
         </div>
 
@@ -151,7 +213,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{
           padding: '16px 20px',
           marginTop: 'auto',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid var(--sidebar-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -171,10 +233,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {user.nom.charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '13px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: '13px', maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user.nom}
               </div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>{user.type_compte}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{user.type_compte}</div>
             </div>
           </div>
           <button
@@ -200,9 +262,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top Header */}
         <div className="dashboard-header" style={{
           height: '60px',
-          background: 'rgba(13,17,23,0.8)',
+          background: 'rgba(255,255,255,0.85)',
           backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid var(--surface-border)',
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', padding: '0 40px',
           flexShrink: 0
@@ -217,18 +279,78 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
 
           {/* Search */}
-          <div className="header-search">
+          <div className="header-search" ref={searchBoxRef} style={{ position: 'relative' }}>
             <span style={{ color: '#64748b', fontSize: '14px' }}>⌕</span>
             <input
               type="text"
-              placeholder="Rechercher des audits, métriques..."
+              placeholder="Rechercher des sites, appareils, pages..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+              onFocus={() => setSearchOpen(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter') goToFirstResult(); if (e.key === 'Escape') setSearchOpen(false); }}
               style={{
                 border: 'none', background: 'transparent',
-                width: '100%', color: '#e2e8f0',
+                width: '100%', color: 'var(--foreground)',
                 fontSize: '13px', outline: 'none'
               }}
             />
-            <span style={{ fontSize: '10px', color: '#64748b', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>⏎</span>
+            <span style={{ fontSize: '10px', color: '#64748b', background: 'rgba(15,23,42,0.06)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>⏎</span>
+
+            {searchOpen && q && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 10px)', left: 0, width: '360px', maxWidth: '80vw',
+                backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', borderRadius: '12px',
+                boxShadow: '0 25px 50px -12px rgba(15,23,42,0.25)', overflow: 'hidden', zIndex: 500,
+                maxHeight: '360px', overflowY: 'auto'
+              }}>
+                {!hasResults && (
+                  <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    Aucun résultat pour « {searchQuery} »
+                  </div>
+                )}
+                {matchedPages.length > 0 && (
+                  <div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>PAGES</div>
+                    {matchedPages.map(p => (
+                      <div key={p.href} onClick={() => { router.push(p.href); setSearchOpen(false); setSearchQuery(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <Search size={14} color="var(--text-muted)" /> {p.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {matchedSites.length > 0 && (
+                  <div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>SITES</div>
+                    {matchedSites.map(s => (
+                      <div key={s.id} onClick={() => { router.push('/dashboard/sites'); setSearchOpen(false); setSearchQuery(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <MapPin size={14} color="var(--text-muted)" />
+                        <span>{s.nom} <span style={{ color: 'var(--text-muted)' }}>· {s.localisation}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {matchedMachines.length > 0 && (
+                  <div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>APPAREILS</div>
+                    {matchedMachines.map(m => (
+                      <div key={m.machine_id} onClick={() => { router.push('/dashboard/appareils'); setSearchOpen(false); setSearchQuery(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <Plug size={14} color="var(--text-muted)" />
+                        <span>{m.nom} <span style={{ color: 'var(--text-muted)' }}>· {m.site_nom}</span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right badges */}
@@ -278,7 +400,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Modal Profil */}
       {isProfileOpen && (
         <div className="nk-modal-overlay" style={{ zIndex: 2000 }}>
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <UserIcon size={20} /> Mon Profil
@@ -320,7 +442,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <label className="input-label">Type de compte</label>
               <select
                 className="input-field"
-                style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
+                style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)' }}
                 value={profileTypeCompte}
                 onChange={(e) => setProfileTypeCompte(e.target.value)}
               >
@@ -337,7 +459,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </button>
             </div>
 
-            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--surface-border)' }}>
               <button
                 type="button"
                 onClick={handleLogout}

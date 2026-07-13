@@ -266,17 +266,17 @@ export default function Home() {
           </form>
 
           <div style={{ marginTop: '32px', textAlign: 'center', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'rgba(255,255,255,0.1)', zIndex: 1 }}></div>
-            <span style={{ position: 'relative', background: '#0f172a', padding: '0 16px', color: '#64748b', fontSize: '13px', zIndex: 2 }}>
+            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'rgba(15,23,42,0.1)', zIndex: 1 }}></div>
+            <span style={{ position: 'relative', background: 'var(--surface-solid)', padding: '0 16px', color: '#64748b', fontSize: '13px', zIndex: 2 }}>
               OU
             </span>
           </div>
 
           <div style={{ marginTop: '32px', textAlign: 'center' }}>
-            <button 
-              style={{ width: '100%', padding: '14px 20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: '#cbd5e1', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#cbd5e1'; }}
+            <button
+              style={{ width: '100%', padding: '14px 20px', borderRadius: '12px', border: '1px solid rgba(15,23,42,0.1)', background: 'transparent', color: '#334155', cursor: 'pointer', fontWeight: 500, transition: 'all 0.2s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'; e.currentTarget.style.color = '#0f172a'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#334155'; }}
               onClick={() => {
                 setAuthMode(authMode === 'login' ? 'register' : 'login');
                 setError('');

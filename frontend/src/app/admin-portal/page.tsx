@@ -254,11 +254,11 @@ export default function AdminDashboardPage() {
                   padding: '14px 18px',
                   border: '1px solid var(--surface-border)',
                   borderRadius: '12px',
-                  backgroundColor: 'rgba(255,255,255,0.01)',
+                  backgroundColor: 'rgba(15,23,42,0.02)',
                   transition: 'all 0.2s ease'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(15,23,42,0.04)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
                       {act.user_name.charAt(0)}
                     </div>
                     <div>
@@ -354,7 +354,7 @@ export default function AdminDashboardPage() {
       {/* Modal de gestion utilisateur */}
       {managingUser && (
         <div className="nk-modal-overlay">
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '540px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '540px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Gérer {managingUser.name}</h2>
               <button onClick={() => setManagingUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>

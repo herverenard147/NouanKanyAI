@@ -227,16 +227,16 @@ export default function AppareilsPage() {
       </div>
 
       {/* Filters Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'rgba(255,255,255,0.01)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'rgba(15,23,42,0.02)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>Filtrer par Site :</span>
           <select 
             value={filterSiteId} 
             onChange={(e) => setFilterSiteId(e.target.value)}
             style={{ 
-              backgroundColor: '#1e293b', 
-              border: '1px solid rgba(255,255,255,0.1)', 
-              color: '#fff', 
+              backgroundColor: 'var(--input-bg)', 
+              border: '1px solid var(--surface-border)', 
+              color: 'var(--foreground)', 
               borderRadius: '8px', 
               padding: '6px 16px', 
               fontSize: '13px', 
@@ -335,7 +335,7 @@ export default function AppareilsPage() {
       {/* Modal d'ajout d'appareil */}
       {isModalOpen && (
         <div className="nk-modal-overlay">
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Ajouter un Équipement</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -389,7 +389,7 @@ export default function AppareilsPage() {
 
               <div className="input-group">
                 <label className="input-label">Associer au Site</label>
-                <select name="site_id" className="input-field" required style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}>
+                <select name="site_id" className="input-field" required style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)', borderRadius: '12px', padding: '12px' }}>
                   <option value="">-- Sélectionner un site --</option>
                   {sites.map(s => (
                     <option key={s.id} value={s.id}>{s.nom} ({s.localisation})</option>
@@ -411,7 +411,7 @@ export default function AppareilsPage() {
                       value={selectedCategorie}
                       onChange={(e) => { setSelectedCategorie(e.target.value); setSelectedMarque(''); setSelectedModele(''); }}
                       required
-                      style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                      style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)', borderRadius: '12px', padding: '12px' }}
                     >
                       <option value="">-- Sélectionner un type --</option>
                       {Object.keys(catalog).map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -427,7 +427,7 @@ export default function AppareilsPage() {
                         onChange={(e) => { setSelectedMarque(e.target.value); setSelectedModele(''); }}
                         required
                         disabled={!selectedCategorie}
-                        style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                        style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)', borderRadius: '12px', padding: '12px' }}
                       >
                         <option value="">-- Marque --</option>
                         {marquesForCategorie.map(m => (
@@ -443,7 +443,7 @@ export default function AppareilsPage() {
                         onChange={(e) => setSelectedModele(e.target.value)}
                         required
                         disabled={!selectedMarque}
-                        style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                        style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)', borderRadius: '12px', padding: '12px' }}
                       >
                         <option value="">-- Modèle --</option>
                         {modelesForMarque.map((m: any) => (
@@ -502,7 +502,7 @@ export default function AppareilsPage() {
       {/* Modal d'analyse multimédia */}
       {isMediaModalOpen && (
         <div className="nk-modal-overlay">
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '470px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '470px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Détecteur de Menaces par Flux Média</h2>
               <button onClick={() => { setIsMediaModalOpen(false); setAnalysisResult(null); setMediaFile(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -542,7 +542,7 @@ export default function AppareilsPage() {
                     onChange={(e) => setSelectedMachineId(e.target.value)} 
                     className="input-field" 
                     required 
-                    style={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '12px', padding: '12px' }}
+                    style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)', borderRadius: '12px', padding: '12px' }}
                   >
                     <option value="">-- Choisir un équipement --</option>
                     {appareils.map(app => (
@@ -568,22 +568,22 @@ export default function AppareilsPage() {
 
                 {/* Media Preview */}
                 {mediaFile && (
-                  <div style={{ marginTop: '16px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.2)', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', width: '100%', textAlign: 'left' }}>Aperçu du média :</div>
+                  <div style={{ marginTop: '16px', borderRadius: '8px', overflow: 'hidden', border: '1px solid rgba(15,23,42,0.15)', backgroundColor: 'rgba(15,23,42,0.85)', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', marginBottom: '8px', width: '100%', textAlign: 'left' }}>Aperçu du média :</div>
                     {mediaFile.type.startsWith('image/') ? (
-                      <img 
-                        src={URL.createObjectURL(mediaFile)} 
-                        alt="Preview" 
-                        style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px' }} 
+                      <img
+                        src={URL.createObjectURL(mediaFile)}
+                        alt="Preview"
+                        style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px' }}
                       />
                     ) : (
-                      <video 
-                        src={URL.createObjectURL(mediaFile)} 
-                        controls 
-                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }} 
+                      <video
+                        src={URL.createObjectURL(mediaFile)}
+                        controls
+                        style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px' }}
                       />
                     )}
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)', marginTop: '8px', wordBreak: 'break-all' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#f1f5f9', marginTop: '8px', wordBreak: 'break-all' }}>
                       {mediaFile.name} ({ (mediaFile.size / (1024 * 1024)).toFixed(2) } MB)
                     </div>
                   </div>
@@ -644,7 +644,7 @@ export default function AppareilsPage() {
       {/* Modal de diagnostics */}
       {isDiagnosticsOpen && (
         <div className="nk-modal-overlay">
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '500px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '500px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={18} /> Diagnostics {diagnosticsData?.machine?.nom ? `— ${diagnosticsData.machine.nom}` : ''}
@@ -659,13 +659,13 @@ export default function AppareilsPage() {
             {!diagnosticsLoading && diagnosticsData && !diagnosticsData.error && (
               <>
                 <div className="grid-2-equal" style={{ marginBottom: '20px' }}>
-                  <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                  <div style={{ padding: '12px', backgroundColor: 'rgba(15,23,42,0.03)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUT</div>
                     <div style={{ fontWeight: 700, color: diagnosticsData.machine.status === 'alerte' ? '#ef4444' : 'var(--primary)' }}>
                       {diagnosticsData.machine.status.toUpperCase()}
                     </div>
                   </div>
-                  <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '10px' }}>
+                  <div style={{ padding: '12px', backgroundColor: 'rgba(15,23,42,0.03)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>PUISSANCE NOMINALE</div>
                     <div style={{ fontWeight: 700 }}>{diagnosticsData.machine.puissance_nominale_kw} kW</div>
                   </div>
@@ -679,7 +679,7 @@ export default function AppareilsPage() {
                     <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Aucun relevé enregistré pour le moment.</div>
                   )}
                   {diagnosticsData.history.map((h: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.015)', border: '1px solid var(--surface-border)' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(15,23,42,0.02)', border: '1px solid var(--surface-border)' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{new Date(h.recorded_at).toLocaleString('fr-FR')}</span>
                       <span>{h.power_kw}kW • {h.temperature_c}°C • {h.vibration_hz}Hz</span>
                     </div>

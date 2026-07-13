@@ -152,7 +152,7 @@ export default function PredictionsPage() {
 
       {isThresholdsOpen && (
         <div className="nk-modal-overlay">
-          <div className="glass-card nk-modal-content" style={{ maxWidth: '440px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '440px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Seuils d'alerte</h2>
               <button onClick={() => setIsThresholdsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>

@@ -132,8 +132,8 @@ export default function ChatWidget() {
         <div style={{
           position: 'fixed', bottom: '98px', right: '28px', zIndex: 1499,
           width: '380px', maxWidth: 'calc(100vw - 40px)', height: '520px', maxHeight: 'calc(100vh - 140px)',
-          backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.12)',
-          borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6)',
+          backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)',
+          borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(15,23,42,0.3)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden'
         }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', display: 'flex', alignItems: 'center', gap: '12px' }}>
