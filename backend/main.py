@@ -67,6 +67,11 @@ if engine is not None:
 else:
     print("[WARN] DATABASE_URL non configurée. L'API répondra sans base de données.")
 
+FRENCH_MONTHS = [
+    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+]
+
 app = FastAPI(title="NouanKanyAI — Intelligence Artificielle", version="1.0.0")
 
 # CORS pour que le frontend Next.js puisse appeler l'API.
@@ -533,7 +538,7 @@ def generate_bill_forecast(user_id: str = Depends(get_current_user_id), db: Sess
     predicted_amount = round(base_estimate * correction_factor)
 
     next_month_date = (datetime.utcnow().replace(day=1) + timedelta(days=32)).replace(day=1)
-    month_label = next_month_date.strftime("%B %Y").capitalize()
+    month_label = f"{FRENCH_MONTHS[next_month_date.month - 1]} {next_month_date.year}"
 
     existing = db.query(models.ElectricityBill).filter(
         models.ElectricityBill.user_id == user_id, models.ElectricityBill.month == month_label, models.ElectricityBill.is_forecast == True,
