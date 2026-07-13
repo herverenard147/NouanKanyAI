@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer } from 'recharts';
-import { Download, CheckCircle, Search, FileText } from 'lucide-react';
+import { Download, CheckCircle, Search, FileText, Camera, Sparkles, Loader2 } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 import { authHeaders } from '@/lib/auth';
 
@@ -14,6 +14,111 @@ export default function FacturationPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState("");
+
+  // Factures d'électricité réelles du client (photo/manuel/prévision IA)
+  const [bills, setBills] = useState<any[]>([]);
+  const [uploadingBill, setUploadingBill] = useState(false);
+  const [generatingForecast, setGeneratingForecast] = useState(false);
+  const [actualInputs, setActualInputs] = useState<Record<string, string>>({});
+  const [confirmingBillId, setConfirmingBillId] = useState<string | null>(null);
+  const [manualBillMode, setManualBillMode] = useState(false);
+  const [manualMonth, setManualMonth] = useState('');
+  const [manualAmount, setManualAmount] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchBills = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/bills`, { headers: authHeaders() });
+      const data = await res.json();
+      if (Array.isArray(data)) setBills(data);
+    } catch (err) {
+      console.error("Failed to fetch bills:", err);
+    }
+  };
+
+  const handleUploadBillPhoto = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBill(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`${API_URL}/api/bills/upload-photo`, {
+        method: 'POST', headers: authHeaders(), body: formData
+      });
+      const data = await res.json();
+      if (data.error) {
+        showNotification(data.error);
+      } else {
+        showNotification(`Facture de ${data.bill.month} importée avec succès.`);
+        fetchBills();
+      }
+    } catch (err) {
+      showNotification("Erreur lors de l'analyse de la facture.");
+    } finally {
+      setUploadingBill(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleGenerateForecast = async () => {
+    setGeneratingForecast(true);
+    try {
+      const res = await fetch(`${API_URL}/api/bills/forecast`, {
+        method: 'POST', headers: authHeaders()
+      });
+      const data = await res.json();
+      if (data.error) {
+        showNotification(data.error);
+      } else {
+        showNotification(`Prévision générée pour ${data.month}.`);
+        fetchBills();
+      }
+    } catch (err) {
+      showNotification("Erreur lors de la génération de la prévision.");
+    } finally {
+      setGeneratingForecast(false);
+    }
+  };
+
+  const handleConfirmActual = async (billId: string) => {
+    const value = parseFloat(actualInputs[billId]);
+    if (!value || value <= 0) return;
+    try {
+      const res = await fetch(`${API_URL}/api/bills/${billId}/actual`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ actual_amount_xof: value })
+      });
+      const data = await res.json();
+      if (!data.error) {
+        showNotification("Montant réel enregistré — l'IA recalibre ses prochaines prévisions.");
+        setConfirmingBillId(null);
+        fetchBills();
+      }
+    } catch (err) {
+      showNotification("Erreur lors de l'enregistrement.");
+    }
+  };
+
+  const handleAddManualBill = async () => {
+    if (!manualMonth || !manualAmount) return;
+    try {
+      const res = await fetch(`${API_URL}/api/bills/manual`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ month: manualMonth, amount_xof: parseFloat(manualAmount) })
+      });
+      const data = await res.json();
+      if (!data.error) {
+        showNotification("Facture ajoutée à l'historique.");
+        setManualMonth(''); setManualAmount(''); setManualBillMode(false);
+        fetchBills();
+      }
+    } catch (err) {
+      showNotification("Erreur lors de l'ajout.");
+    }
+  };
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -82,6 +187,7 @@ export default function FacturationPage() {
       }
     };
     fetchFacturationData();
+    fetchBills();
   }, []);
 
   const pieData = [
@@ -203,6 +309,110 @@ export default function FacturationPage() {
 
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
               <a href="#" onClick={(e) => { e.preventDefault(); showNotification("Le registre complet n'est pas encore disponible — bientôt ici."); }} style={{ color: 'var(--primary)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', textDecoration: 'none' }}>VOIR LE REGISTRE BLOCKCHAIN COMPLET</a>
+            </div>
+          </div>
+
+          {/* Factures d'électricité réelles + prévisions IA */}
+          <div className="glass-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '12px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Factures & Prévisions IA</h3>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
+              Importez vos vraies factures d'électricité (photo ou saisie manuelle) pour que l'IA base ses prévisions
+              et ses optimisations sur votre historique réel. Quand le mois prévu arrive, entrez le montant réel pour
+              que l'IA affine sa précision.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+              <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleUploadBillPhoto} style={{ display: 'none' }} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-primary"
+                disabled={uploadingBill}
+                style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', border: 'none', cursor: 'pointer' }}>
+                {uploadingBill ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                {uploadingBill ? 'Analyse en cours...' : 'Prendre en photo / Importer une facture'}
+              </button>
+              <button
+                onClick={handleGenerateForecast}
+                className="btn-secondary"
+                disabled={generatingForecast}
+                style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', cursor: 'pointer' }}>
+                {generatingForecast ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                Générer la prévision du mois prochain
+              </button>
+            </div>
+
+            {!manualBillMode ? (
+              <div style={{ marginBottom: '16px' }}>
+                <span onClick={() => setManualBillMode(true)} style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer' }}>
+                  Ou saisir une ancienne facture manuellement
+                </span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px', padding: '14px', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
+                <input className="input-field" placeholder="Ex: Juin 2026" value={manualMonth} onChange={(e) => setManualMonth(e.target.value)} style={{ width: '140px' }} />
+                <input className="input-field" type="number" placeholder="Montant (FCFA)" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} style={{ width: '160px' }} />
+                <button onClick={handleAddManualBill} className="btn-primary" style={{ width: 'auto', padding: '8px 16px', border: 'none', cursor: 'pointer' }}>Ajouter</button>
+                <span onClick={() => setManualBillMode(false)} style={{ fontSize: '12px', color: 'var(--text-muted)', cursor: 'pointer' }}>Annuler</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {bills.map((bill) => {
+                const sourceBadge = bill.is_forecast
+                  ? { label: 'PRÉVISION IA', color: '#F59E0B' }
+                  : bill.source === 'ocr'
+                  ? { label: 'PHOTO', color: 'var(--primary)' }
+                  : { label: 'MANUEL', color: 'var(--text-muted)' };
+                const needsActual = bill.is_forecast && !bill.actual_amount_xof;
+                const ecartPct = bill.is_forecast && bill.actual_amount_xof && bill.amount_xof
+                  ? Math.round(((bill.actual_amount_xof - bill.amount_xof) / bill.amount_xof) * 100)
+                  : null;
+                return (
+                  <div key={bill.id} style={{ border: `1px solid ${needsActual ? 'rgba(245,158,11,0.35)' : 'var(--surface-border)'}`, borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: sourceBadge.color, border: `1px solid ${sourceBadge.color}55`, padding: '2px 8px', borderRadius: '4px' }}>{sourceBadge.label}</span>
+                        <span style={{ fontWeight: 700, fontSize: '13px' }}>{bill.month}</span>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '14px' }}>
+                        {bill.is_forecast ? `~${bill.amount}` : bill.amount}
+                      </div>
+                    </div>
+
+                    {ecartPct !== null && (
+                      <div style={{ fontSize: '11px', color: Math.abs(ecartPct) <= 10 ? 'var(--primary)' : '#F59E0B', fontWeight: 600 }}>
+                        Réel : {bill.actual_amount_xof.toLocaleString('fr-FR')} FCFA (écart {ecartPct > 0 ? '+' : ''}{ecartPct}% vs. prévision)
+                      </div>
+                    )}
+
+                    {needsActual && (
+                      confirmingBillId === bill.id ? (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            className="input-field" type="number" placeholder="Montant réel (FCFA)"
+                            value={actualInputs[bill.id] || ''}
+                            onChange={(e) => setActualInputs({ ...actualInputs, [bill.id]: e.target.value })}
+                            style={{ width: '160px', padding: '6px 10px', fontSize: '12px' }}
+                          />
+                          <button onClick={() => handleConfirmActual(bill.id)} className="btn-primary" style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', border: 'none', cursor: 'pointer' }}>Valider</button>
+                          <span onClick={() => setConfirmingBillId(null)} style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer' }}>Annuler</span>
+                        </div>
+                      ) : (
+                        <span onClick={() => setConfirmingBillId(bill.id)} style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+                          La facture réelle est arrivée — entrer le montant réel
+                        </span>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+              {bills.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0', fontSize: '13px' }}>
+                  Aucune facture pour le moment. Importez votre première facture pour démarrer les prévisions IA.
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -25,6 +25,10 @@ services:
       # à renseigner après le premier déploiement du service frontend (autorise le CORS).
       - key: FRONTEND_URL
         sync: false
+      # Email du premier compte superadmin : dès que ce compte se connecte, il reçoit
+      # automatiquement le rôle superadmin (bootstrap sans accès direct à la base).
+      - key: SUPERADMIN_EMAIL
+        sync: false
 
   # --- Frontend : Next.js 15 ---
   - type: web

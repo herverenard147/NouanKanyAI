@@ -69,16 +69,22 @@ export default function DashboardPage() {
         
         // Generate realistic chart data from real machine power
         setChartData(generateDailyProfile(total));
-        
-        // Calculate monthly savings dynamically: 15% savings at CIE tariff 68 FCFA/kWh
-        const monthlySavings = total * 24 * 30 * 68 * 0.15;
-        setEconomiesMois(monthlySavings);
+
+        // Économies réellement vérifiées ce mois-ci (actions IA journalisées dans l'audit),
+        // pas une simulation — vient du même calcul que la page Facturation.
+        try {
+          const factRes = await fetch(`${API_URL}/api/facturation`, { headers: authHeaders() });
+          const factData = await factRes.json();
+          setEconomiesMois(factData.grossSavings || 0);
+        } catch {
+          setEconomiesMois(0);
+        }
 
         // Fetch AI recommendation
         if (data.length > 0) {
           const recRes = await fetch(`${API_URL}/api/recommend`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify(data)
           });
           const recData = await recRes.json();
@@ -204,12 +210,12 @@ export default function DashboardPage() {
           </div>
           <div style={{ fontSize: '32px', fontFamily: 'Outfit, sans-serif', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>
             {economiesMois > 0
-              ? `${(economiesMois / 1_000_000).toFixed(1)}M`
-              : '—'
+              ? (economiesMois >= 1_000_000 ? `${(economiesMois / 1_000_000).toFixed(1)}M` : economiesMois.toLocaleString('fr-FR'))
+              : '0'
             } <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>XOF</span>
           </div>
           <div style={{ color: 'var(--primary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-            <ArrowUpRight size={14} /> Estimation basée sur 15% d'économie IA
+            <ArrowUpRight size={14} /> Économies vérifiées (actions IA journalisées ce mois)
           </div>
         </div>
       </div>

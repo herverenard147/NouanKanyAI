@@ -96,16 +96,25 @@ def detect_anomalies(iso_data, sensor_readings):
         'severity': 'critique' if score < -0.3 else 'modérée' if score < -0.1 else 'faible'
     }
 
-def generate_recommendations(xgb_data, iso_data, machines_state):
+DEFAULT_THRESHOLDS = {
+    'temperature_max_c': 60.0,
+    'vibration_max_hz': 45.0,
+    'surconsommation_ratio': 1.2,
+}
+
+def generate_recommendations(xgb_data, iso_data, machines_state, thresholds=None):
     """
     Génère des recommandations actionnables basées sur l'état actuel des machines.
-    
+
     machines_state: liste de dicts avec les infos des machines
     [
-        {'machine_id': 'CLIM-001', 'power_kw': 12.5, 'temperature_c': 45.0, 
+        {'machine_id': 'CLIM-001', 'power_kw': 12.5, 'temperature_c': 45.0,
          'vibration_hz': 8.0, 'pressure_bar': 3.2, 'priority': 'haute'}
     ]
+    thresholds: dict optionnel {'temperature_max_c', 'vibration_max_hz', 'surconsommation_ratio'}
+    définis par l'utilisateur (sinon les valeurs par défaut ci-dessus sont utilisées).
     """
+    t = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
     recommendations = []
 
     for machine in machines_state:
@@ -142,8 +151,8 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
         
         # 3. Règles de recommandation
         
-        # Règle 1: Surconsommation (puissance actuelle > 120% de la moyenne prédite)
-        if machine['power_kw'] > avg_predicted_kw * 1.2:
+        # Règle 1: Surconsommation (puissance actuelle > seuil x moyenne prédite)
+        if machine['power_kw'] > avg_predicted_kw * t['surconsommation_ratio']:
             excess_kw = machine['power_kw'] - avg_predicted_kw
             gain = round(excess_kw * 6 * TARIF_KWH)  # Gain sur 6h
             recommendations.append({
@@ -174,16 +183,29 @@ def generate_recommendations(xgb_data, iso_data, machines_state):
                 'gain_fcfa': gain
             })
 
-        # Règle 3: Surchauffe (température > 60°C)
-        if machine['temperature_c'] > 60:
+        # Règle 3: Surchauffe (température > seuil défini par l'utilisateur)
+        if machine['temperature_c'] > t['temperature_max_c']:
             recommendations.append({
                 'machine_id': mid,
                 'type': 'alerte',
                 'severity': 'critique',
                 'title': f"Surchauffe détectée sur {nom}",
                 'description': f"La température de {nom} est de {machine['temperature_c']}°C "
-                              f"(seuil critique: 60°C). Risque de dommage matériel.",
+                              f"(seuil critique: {t['temperature_max_c']}°C). Risque de dommage matériel.",
                 'action': f"Éteignez {nom} immédiatement et lancez une inspection",
+                'gain_fcfa': 0
+            })
+
+        # Règle 3bis: Vibration excessive (usure mécanique, défaillance imminente)
+        if machine['vibration_hz'] > t['vibration_max_hz']:
+            recommendations.append({
+                'machine_id': mid,
+                'type': 'alerte',
+                'severity': 'critique',
+                'title': f"Vibration excessive sur {nom}",
+                'description': f"Le niveau de vibration de {nom} est de {machine['vibration_hz']}Hz "
+                              f"(seuil critique: {t['vibration_max_hz']}Hz). Risque d'usure mécanique ou de panne.",
+                'action': f"Lancez une inspection mécanique de {nom} dès que possible",
                 'gain_fcfa': 0
             })
 

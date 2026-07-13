@@ -37,7 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         setUser({
           nom: currentUser.nom || currentUser.email,
           email: currentUser.email,
-          type_compte: currentUser.role || 'Utilisateur'
+          type_compte: currentUser.role || 'Utilisateur',
+          platform_role: currentUser.platform_role || null
         });
         setProfileNom(currentUser.nom || '');
         setProfileTypeCompte(currentUser.type_compte || 'Particulier');
@@ -84,7 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/appareils',    label: 'Appareils',       icon: Plug },
     { href: '/dashboard/predictions',  label: 'Assistant IA',    icon: Bot },
     { href: '/dashboard/facturation',  label: 'Facturation',     icon: Receipt },
-    { href: '/dashboard/admin',        label: 'Admin',           icon: Settings },
+    // Réservé aux comptes avec un rôle plateforme (admin/superadmin) — un client normal
+    // ne voit même pas ce lien, il n'a plus juste un accès qui échouerait silencieusement.
+    ...(user.platform_role ? [{ href: '/dashboard/admin', label: 'Admin', icon: Settings }] : []),
   ];
 
   return (
@@ -266,8 +269,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Modal Profil */}
       {isProfileOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div className="glass-card" style={{ width: '400px', maxWidth: '100%', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+        <div className="nk-modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <UserIcon size={20} /> Mon Profil

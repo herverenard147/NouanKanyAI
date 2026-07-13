@@ -334,8 +334,8 @@ export default function AppareilsPage() {
 
       {/* Modal d'ajout d'appareil */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-card" style={{ width: '400px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 1001, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+        <div className="nk-modal-overlay">
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Ajouter un Équipement</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -501,8 +501,8 @@ export default function AppareilsPage() {
 
       {/* Modal d'analyse multimédia */}
       {isMediaModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-card" style={{ width: '450px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', zIndex: 1001, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+        <div className="nk-modal-overlay">
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '470px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Détecteur de Menaces par Flux Média</h2>
               <button onClick={() => { setIsMediaModalOpen(false); setAnalysisResult(null); setMediaFile(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -643,8 +643,8 @@ export default function AppareilsPage() {
 
       {/* Modal de diagnostics */}
       {isDiagnosticsOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div className="glass-card" style={{ width: '480px', maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+        <div className="nk-modal-overlay">
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '500px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Activity size={18} /> Diagnostics {diagnosticsData?.machine?.nom ? `— ${diagnosticsData.machine.nom}` : ''}

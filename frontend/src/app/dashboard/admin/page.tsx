@@ -1,38 +1,97 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, Server, ShieldAlert, Cpu, Globe, Zap, Database, CheckCircle, Network, AlertTriangle } from 'lucide-react';
+import { Activity, Server, ShieldAlert, Cpu, Globe, Zap, Database, CheckCircle, Network, AlertTriangle, Settings2, X, Power } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { API_URL } from '@/lib/api';
+import { authHeaders, getCurrentUser } from '@/lib/auth';
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState("");
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [managingUser, setManagingUser] = useState<any>(null);
+  const [managedMachines, setManagedMachines] = useState<any[]>([]);
+  const [managedFacturation, setManagedFacturation] = useState<any>(null);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(""), 3000);
   };
 
-  useEffect(() => {
-    const fetchAdminMetrics = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/admin/metrics`);
-        const json = await res.json();
-        if (json && json.platform && !json.error) {
-          setData(json);
-        } else {
-          console.error("Backend n'a pas retourné les bonnes données. Le serveur a-t-il été redémarré ?", json);
-        }
-      } catch (err) {
-        console.error("Failed to fetch admin metrics", err);
-      } finally {
-        setLoading(false);
+  const fetchAdminMetrics = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/metrics`, { headers: authHeaders() });
+      const json = await res.json();
+      if (json && json.platform && !json.error) {
+        setData(json);
+      } else {
+        console.error("Backend n'a pas retourné les bonnes données. Le serveur a-t-il été redémarré ?", json);
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch admin metrics", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAdminMetrics();
+    getCurrentUser().then(u => setMyRole(u?.platform_role || null));
   }, []);
+
+  const openManageUser = async (u: any) => {
+    setManagingUser(u);
+    setManagedMachines([]);
+    setManagedFacturation(null);
+    try {
+      const [machinesRes, factRes] = await Promise.all([
+        fetch(`${API_URL}/api/admin/users/${u.id}/machines`, { headers: authHeaders() }),
+        fetch(`${API_URL}/api/admin/users/${u.id}/facturation`, { headers: authHeaders() }),
+      ]);
+      setManagedMachines(await machinesRes.json());
+      setManagedFacturation(await factRes.json());
+    } catch (err) {
+      console.error("Failed to fetch user detail", err);
+    }
+  };
+
+  const adminResetMachine = async (machineId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/machines/${machineId}/reset`, {
+        method: 'POST', headers: authHeaders()
+      });
+      const json = await res.json();
+      if (!json.error) {
+        showNotification(`${machineId} réinitialisé.`);
+        if (managingUser) openManageUser(managingUser);
+      }
+    } catch (err) {
+      showNotification("Erreur lors de la réinitialisation.");
+    }
+  };
+
+  const toggleAdminRole = async (u: any) => {
+    const newRole = u.platform_role === 'admin' ? null : 'admin';
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${u.id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ platform_role: newRole })
+      });
+      const json = await res.json();
+      if (!json.error) {
+        showNotification(newRole ? `${u.name} est maintenant administrateur.` : `${u.name} n'est plus administrateur.`);
+        setManagingUser({ ...u, platform_role: newRole });
+        fetchAdminMetrics();
+      } else {
+        showNotification(json.error);
+      }
+    } catch (err) {
+      showNotification("Erreur lors du changement de rôle.");
+    }
+  };
 
   // Génère dynamiquement les données de dérive du modèle à partir de la précision réelle retournée par l'API
   const generateDriftData = (baseMape: number) => {
@@ -135,6 +194,7 @@ export default function AdminDashboardPage() {
                     <th style={{ textAlign: 'center' }}>Machines</th>
                     <th>Dernière Activité</th>
                     <th>Statut</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,6 +208,11 @@ export default function AdminDashboardPage() {
                         <span style={{ fontSize: '11px', color: 'var(--secondary)', backgroundColor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.15)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
                           {u.role}
                         </span>
+                        {u.platform_role && (
+                          <span style={{ marginLeft: '6px', fontSize: '10px', color: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '2px 6px', borderRadius: '10px', fontWeight: 700 }}>
+                            {u.platform_role === 'superadmin' ? 'SUPERADMIN' : 'ADMIN'}
+                          </span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{u.sites_count}</td>
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{u.machines_count}</td>
@@ -157,11 +222,16 @@ export default function AdminDashboardPage() {
                           ● {u.status}
                         </span>
                       </td>
+                      <td>
+                        <button onClick={() => openManageUser(u)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <Settings2 size={12} /> Gérer
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {(!data.users || data.users.length === 0) && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Aucun utilisateur enregistré.</td>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Aucun utilisateur enregistré.</td>
                     </tr>
                   )}
                 </tbody>
@@ -280,6 +350,77 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
+
+      {/* Modal de gestion utilisateur */}
+      {managingUser && (
+        <div className="nk-modal-overlay">
+          <div className="glass-card nk-modal-content" style={{ maxWidth: '540px', backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Gérer {managingUser.name}</h2>
+              <button onClick={() => setManagingUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>{managingUser.email}</p>
+
+            {myRole === 'superadmin' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', border: '1px solid var(--surface-border)', borderRadius: '8px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700 }}>Rôle plateforme</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Un administrateur peut assister les clients mais ne peut pas gérer les rôles.</div>
+                </div>
+                <button
+                  onClick={() => toggleAdminRole(managingUser)}
+                  className={managingUser.platform_role === 'admin' ? 'btn-secondary' : 'btn-primary'}
+                  style={{ width: 'auto', padding: '8px 16px', fontSize: '12px', cursor: 'pointer', border: managingUser.platform_role === 'admin' ? '' : 'none' }}
+                >
+                  {managingUser.platform_role === 'admin' ? 'Rétrograder' : 'Promouvoir en Admin'}
+                </button>
+              </div>
+            )}
+
+            {managedFacturation && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
+                <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>ÉCONOMIES (MOIS)</div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--primary)' }}>{managedFacturation.grossSavingsThisMonth.toLocaleString('fr-FR')} FCFA</div>
+                </div>
+                <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>FACTURES CIE</div>
+                  <div style={{ fontSize: '14px', fontWeight: 800 }}>{managedFacturation.billCount}</div>
+                </div>
+                <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>FACTURES GAIN-SHARE</div>
+                  <div style={{ fontSize: '14px', fontWeight: 800 }}>{managedFacturation.invoiceCount}</div>
+                </div>
+              </div>
+            )}
+
+            <h3 style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '12px' }}>ÉQUIPEMENTS ({managedMachines.length})</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+              {managedMachines.map((m) => (
+                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600 }}>{m.nom}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.site_nom} · {m.puissance_nominale_kw} kW</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className={`status-badge ${m.status === 'actif' ? 'status-verified' : 'status-backup'}`}>● {m.status}</span>
+                    {m.status === 'alerte' && (
+                      <button onClick={() => adminResetMachine(m.machine_id)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                        <Power size={12} /> Réinitialiser
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {managedMachines.length === 0 && (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '12px' }}>Aucun équipement enregistré pour cet utilisateur.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {notification && (

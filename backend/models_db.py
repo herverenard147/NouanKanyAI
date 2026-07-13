@@ -21,6 +21,9 @@ class User(Base):
     nom = Column(String, nullable=False)
     type_compte = Column(String, default="Particulier")
     role = Column(String, default="Utilisateur")
+    # Rôle d'accès à la plateforme (distinct de `role`/`type_compte` qui décrivent
+    # le type de compte client) : None = client normal, "admin" ou "superadmin".
+    platform_role = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_sign_in_at = Column(DateTime, nullable=True)
 
@@ -76,19 +79,66 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     action = Column(String)
     ref_hash = Column(String)
     status = Column(String)
+    gain_fcfa = Column(Float, nullable=True)
 
 
 class Invoice(Base):
+    """Facture de commission (Gain-Share 10%) que NouanKanyAI émet au client — distinct
+    des factures d'électricité réelles du client, voir `ElectricityBill` ci-dessous."""
     __tablename__ = "invoices"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     month = Column(String)
     amount_xof = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ElectricityBill(Base):
+    """Facture d'électricité réelle du client (CIE ou équivalent) — importée par photo,
+    saisie manuellement, ou générée en prévision par l'IA à partir de l'historique.
+    Sert de base à l'IA pour prévoir les futures factures et calibrer ses optimisations."""
+    __tablename__ = "electricity_bills"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    month = Column(String)
+    amount_xof = Column(Float)
+    # Provenance de l'enregistrement : "manuel" (saisie), "ocr" (photo de facture analysée
+    # par l'IA), ou "ia" (prévision générée par l'IA à partir de l'historique).
+    source = Column(String, default="manuel")
+    is_forecast = Column(Boolean, default=False)
+    # Renseigné quand la vraie facture arrive pour un mois qui avait été prévu par l'IA,
+    # ce qui permet de mesurer l'écart et de recalibrer les prochaines prévisions.
+    actual_amount_xof = Column(Float, nullable=True)
+    kwh_consumed = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AlertThreshold(Base):
+    __tablename__ = "alert_thresholds"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    temperature_max_c = Column(Float, default=60.0)
+    vibration_max_hz = Column(Float, default=45.0)
+    surconsommation_ratio = Column(Float, default=1.2)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ForecastAccuracy(Base):
+    """Facteur de correction appris à partir de l'écart prévision vs facture réelle,
+    pour recalibrer les prochaines prévisions de l'IA (moyenne mobile simple)."""
+    __tablename__ = "forecast_accuracy"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True)
+    correction_factor = Column(Float, default=1.0)
+    last_error_pct = Column(Float, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class AIAlert(Base):

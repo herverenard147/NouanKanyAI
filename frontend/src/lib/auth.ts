@@ -10,6 +10,7 @@ export interface AuthUser {
   nom: string;
   type_compte: string;
   role: string;
+  platform_role?: string | null;
 }
 
 // sessionStorage (pas localStorage) : chaque onglet garde sa propre session.
