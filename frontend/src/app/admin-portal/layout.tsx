@@ -6,6 +6,7 @@ import { ShieldAlert, LogOut } from 'lucide-react';
 import { getCurrentUser, signOut } from '@/lib/auth';
 import { useLanguage } from '@/lib/i18n';
 import LanguageToggle from '@/components/LanguageToggle';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AdminPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function AdminPortalLayout({ children }: { children: React.ReactN
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <ThemeToggle />
           <LanguageToggle />
           <button
             onClick={handleLogout}

@@ -229,7 +229,7 @@ export default function AppareilsPage() {
       </div>
 
       {/* Filters Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'rgba(15,23,42,0.02)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'var(--tint-subtle)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('appareils', 'filterBySite')}</span>
           <select 
@@ -264,7 +264,7 @@ export default function AppareilsPage() {
           <div key={app.id} className="glass-card" style={{ 
             padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column',
             borderTop: `4px solid ${app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? 'var(--danger)' : 'var(--surface-border)'}`,
-            backgroundColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.05)' : app.status === 'hors ligne' ? 'rgba(15, 23, 42, 0.02)' : 'transparent',
+            backgroundColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.05)' : app.status === 'hors ligne' ? 'var(--tint-subtle)' : 'transparent',
             borderColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.2)' : 'var(--surface-border)'
           }}>
             <div style={{ padding: '24px' }}>
@@ -661,13 +661,13 @@ export default function AppareilsPage() {
             {!diagnosticsLoading && diagnosticsData && !diagnosticsData.error && (
               <>
                 <div className="grid-2-equal" style={{ marginBottom: '20px' }}>
-                  <div style={{ padding: '12px', backgroundColor: 'rgba(15,23,42,0.03)', borderRadius: '10px' }}>
+                  <div style={{ padding: '12px', backgroundColor: 'var(--tint-subtle)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>STATUT</div>
                     <div style={{ fontWeight: 700, color: diagnosticsData.machine.status === 'alerte' ? '#ef4444' : 'var(--primary)' }}>
                       {diagnosticsData.machine.status.toUpperCase()}
                     </div>
                   </div>
-                  <div style={{ padding: '12px', backgroundColor: 'rgba(15,23,42,0.03)', borderRadius: '10px' }}>
+                  <div style={{ padding: '12px', backgroundColor: 'var(--tint-subtle)', borderRadius: '10px' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>PUISSANCE NOMINALE</div>
                     <div style={{ fontWeight: 700 }}>{diagnosticsData.machine.puissance_nominale_kw} kW</div>
                   </div>
@@ -681,7 +681,7 @@ export default function AppareilsPage() {
                     <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Aucun relevé enregistré pour le moment.</div>
                   )}
                   {diagnosticsData.history.map((h: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'rgba(15,23,42,0.02)', border: '1px solid var(--surface-border)' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--tint-subtle)', border: '1px solid var(--surface-border)' }}>
                       <span style={{ color: 'var(--text-muted)' }}>{new Date(h.recorded_at).toLocaleString('fr-FR')}</span>
                       <span>{h.power_kw}kW • {h.temperature_c}°C • {h.vibration_hz}Hz</span>
                     </div>

@@ -235,8 +235,8 @@ export default function DashboardPage() {
                     <stop offset="100%" stopColor="var(--secondary)" stopOpacity={0.3}/>
                   </linearGradient>
                   <linearGradient id="consoDim" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(15,23,42,0.18)" stopOpacity={1}/>
-                    <stop offset="100%" stopColor="rgba(15,23,42,0.03)" stopOpacity={0.3}/>
+                    <stop offset="0%" stopColor="var(--chart-dim-strong)" stopOpacity={1}/>
+                    <stop offset="100%" stopColor="var(--chart-dim-soft)" stopOpacity={0.3}/>
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="time" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                 padding: '16px', 
                 border: '1px solid var(--surface-border)', 
                 borderRadius: '12px',
-                backgroundColor: 'rgba(15, 23, 42, 0.02)',
+                backgroundColor: 'var(--tint-subtle)',
                 transition: 'all 0.2s ease'
               }}
               className="nav-item-hover-only" // Added simple border hover

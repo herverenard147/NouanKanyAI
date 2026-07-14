@@ -10,6 +10,7 @@ import { API_URL } from '@/lib/api';
 import ChatWidget from './ChatWidget';
 import { useLanguage } from '@/lib/i18n';
 import LanguageToggle from '@/components/LanguageToggle';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -264,11 +265,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top Header */}
         <div className="dashboard-header" style={{
           height: '60px',
-          background: 'rgba(255,255,255,0.85)',
+          background: 'var(--header-bg)',
           backdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--surface-border)',
           display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', padding: '0 40px',
+          position: 'relative', zIndex: 50,
           flexShrink: 0
         }}>
           {/* Hamburger (mobile only) */}
@@ -296,7 +298,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 fontSize: '13px', outline: 'none'
               }}
             />
-            <span style={{ fontSize: '10px', color: '#64748b', background: 'rgba(15,23,42,0.06)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>⏎</span>
+            <span style={{ fontSize: '10px', color: '#64748b', background: 'var(--tint-subtle)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>⏎</span>
 
             {searchOpen && q && (
               <div style={{
@@ -316,7 +318,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {matchedPages.map(p => (
                       <div key={p.href} onClick={() => { router.push(p.href); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--tint-subtle)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <Search size={14} color="var(--text-muted)" /> {p.label}
                       </div>
@@ -329,7 +331,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {matchedSites.map(s => (
                       <div key={s.id} onClick={() => { router.push('/dashboard/sites'); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--tint-subtle)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <MapPin size={14} color="var(--text-muted)" />
                         <span>{s.nom} <span style={{ color: 'var(--text-muted)' }}>· {s.localisation}</span></span>
@@ -343,7 +345,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {matchedMachines.map(m => (
                       <div key={m.machine_id} onClick={() => { router.push('/dashboard/appareils'); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15,23,42,0.04)'}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--tint-subtle)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <Plug size={14} color="var(--text-muted)" />
                         <span>{m.nom} <span style={{ color: 'var(--text-muted)' }}>· {m.site_nom}</span></span>
@@ -357,6 +359,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Right badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <ThemeToggle />
             <LanguageToggle />
             {user.platform_role && (
               <Link href="/admin-portal" style={{

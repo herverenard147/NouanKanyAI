@@ -256,11 +256,11 @@ export default function AdminDashboardPage() {
                   padding: '14px 18px',
                   border: '1px solid var(--surface-border)',
                   borderRadius: '12px',
-                  backgroundColor: 'rgba(15,23,42,0.02)',
+                  backgroundColor: 'var(--tint-subtle)',
                   transition: 'all 0.2s ease'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(15,23,42,0.04)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--tint-subtle)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
                       {act.user_name.charAt(0)}
                     </div>
                     <div>

@@ -6,6 +6,7 @@ import { signUp, signIn, getCurrentUser } from '@/lib/auth';
 import Image from 'next/image';
 import { useLanguage } from '@/lib/i18n';
 import LanguageToggle from '@/components/LanguageToggle';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Home() {
   const router = useRouter();
@@ -190,7 +191,8 @@ export default function Home() {
 
         {/* PANNEAU DROIT : aperçu sombre du dashboard */}
         <div className="auth-hero">
-          <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 25 }}>
+          <div style={{ position: 'absolute', top: '24px', right: '24px', zIndex: 25, display: 'flex', gap: '8px' }}>
+            <ThemeToggle dark />
             <LanguageToggle dark />
           </div>
           <div className="auth-hero-topbar">
