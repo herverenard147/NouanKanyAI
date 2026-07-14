@@ -13,6 +13,7 @@ from typing import List, Optional
 import base64
 import joblib
 import os
+import time
 import uuid
 import requests
 from dotenv import load_dotenv
@@ -21,19 +22,36 @@ from dotenv import load_dotenv
 # d'en rouvrir une à chaque appel, ce qui réduisait la marge avant timeout).
 _gemini_session = requests.Session()
 
-def call_gemini(payload: dict, timeout: int = 25, retries: int = 1) -> dict:
-    """Appelle l'API Gemini avec un léger mécanisme de retry sur timeout/erreur réseau."""
+def gemini_error_summary(e: Exception) -> str:
+    """Résumé sûr d'une erreur d'appel Gemini pour les logs : jamais la chaîne brute de
+    l'exception, qui peut embarquer l'URL de la requête (et donc la clé API)."""
+    if isinstance(e, requests.exceptions.HTTPError) and e.response is not None:
+        return f"HTTP {e.response.status_code}"
+    return type(e).__name__
+
+def call_gemini(payload: dict, timeout: int = 25, retries: int = 2) -> dict:
+    """Appelle l'API Gemini avec retry + backoff sur timeout/erreur réseau/429/503.
+    La clé API est envoyée en en-tête (jamais dans l'URL) pour qu'elle ne puisse pas
+    se retrouver dans un message d'erreur ou un log."""
     gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={gemini_api_key}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+    headers = {"x-goog-api-key": gemini_api_key, "Content-Type": "application/json"}
 
     last_exc = None
     for attempt in range(retries + 1):
         try:
-            resp = _gemini_session.post(url, json=payload, timeout=timeout)
+            resp = _gemini_session.post(url, json=payload, headers=headers, timeout=timeout)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
             last_exc = e
+            transient = isinstance(e, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)) or (
+                isinstance(e, requests.exceptions.HTTPError) and e.response is not None and e.response.status_code in (429, 503)
+            )
+            if transient and attempt < retries:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            break
     raise last_exc
 
 from db import engine, Base, get_db
@@ -512,7 +530,7 @@ async def upload_bill_photo(file: UploadFile = File(...), user_id: str = Depends
         db.refresh(bill)
         return {"status": "success", "bill": serialize_bill(bill)}
     except Exception as e:
-        print(f"[WARN] Gemini invoice OCR error: {e}")
+        print(f"[WARN] Gemini invoice OCR error: {gemini_error_summary(e)}")
         return {"error": "L'analyse IA de la facture a échoué (service momentanément indisponible). Réessayez ou saisissez-la manuellement."}
 
 @app.post("/api/bills/forecast")
@@ -998,7 +1016,7 @@ def chat_with_gemini(req: ChatRequest):
         text = result['candidates'][0]['content']['parts'][0]['text']
         return {"response": text}
     except Exception as e:
-        print(f"[WARN] Gemini chat error: {e}")
+        print(f"[WARN] Gemini chat error: {gemini_error_summary(e)}")
         return {"response": "Désolé, l'assistant IA met trop de temps à répondre pour le moment. Réessayez dans quelques instants."}
 
 @app.post("/api/machines/{machine_id}/analyze-media")
@@ -1085,7 +1103,7 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
             }
     except Exception as e:
         # En cas d'erreur ou d'absence de clé valide, mode démo basé sur le nom du fichier
-        print(f"[WARN] Gemini analyze error: {e}")
+        print(f"[WARN] Gemini analyze error: {gemini_error_summary(e)}")
         filename_lower = file.filename.lower()
         if any(w in filename_lower for w in ["fire", "feu", "smoke", "danger", "fuite", "leak"]):
             mach.status = "alerte"
