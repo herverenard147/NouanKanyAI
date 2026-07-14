@@ -45,11 +45,12 @@ export default function Home() {
   }, []);
 
   // Vérifie si une session existe déjà -> redirige direct vers le dashboard
+  // (ou le portail admin pour les comptes admin/superadmin)
   useEffect(() => {
     const checkSession = async () => {
       const user = await getCurrentUser();
       if (user) {
-        router.push('/dashboard');
+        router.push(user.platform_role ? '/admin-portal' : '/dashboard');
       }
     };
     checkSession();
@@ -62,16 +63,16 @@ export default function Home() {
 
     try {
       if (authMode === 'register') {
-        await signUp(email, password, nom, typeCompte);
+        const user = await signUp(email, password, nom, typeCompte);
         showToast(t('landing', 'toastAccountCreated'));
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(user.platform_role ? '/admin-portal' : '/dashboard');
         }, 1200);
       } else {
-        await signIn(email, password);
+        const user = await signIn(email, password);
         showToast(t('landing', 'toastLoginSuccess'));
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(user.platform_role ? '/admin-portal' : '/dashboard');
         }, 1200);
       }
     } catch (err: any) {
