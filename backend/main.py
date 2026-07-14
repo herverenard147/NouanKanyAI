@@ -1017,13 +1017,13 @@ def summarize_machines_for_chat(context: List[dict]) -> str:
 
 @app.post("/api/chat")
 def chat_with_gemini(req: ChatRequest):
-    system_prompt = "Tu es NouanKanyAI Copilot, l'IA intelligente de l'application NouanKanyAI. Tu aides le responsable d'une usine ou d'un hotel a gerer sa consommation d'energie (electricite, machines). Reste professionnel, concis, et utilise le contexte fourni pour donner des reponses precises."
+    system_prompt = "Tu es NouanKanyAI Copilot, l'IA intelligente de l'application NouanKanyAI. Tu aides le responsable d'une usine ou d'un hotel a gerer sa consommation d'energie (electricite, machines). Reste professionnel et concis (reponses courtes, va a l'essentiel), et utilise le contexte fourni pour donner des reponses precises. Reponds toujours en francais, sauf si l'utilisateur ecrit explicitement dans une autre langue."
     context_str = f"Etat actuel des machines :\n{summarize_machines_for_chat(req.context)}"
     full_prompt = f"{system_prompt}\n\n{context_str}\n\nQuestion de l'utilisateur : {req.message}"
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500}
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 800}
     }
 
     try:
