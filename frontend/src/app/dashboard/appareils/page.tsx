@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Activity, AlertTriangle, ShieldCheck, Zap, RotateCcw, ActivitySquare, AlertOctagon } from 'lucide-react';
 import { authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/lib/i18n';
 
 export default function AppareilsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const siteParam = searchParams.get('siteId');
@@ -57,14 +59,14 @@ export default function AppareilsPage() {
         power_raw: m.power_kw,
         temperature_raw: m.temperature_c,
         vibration_raw: m.vibration_hz,
-        metric1Label: 'Température',
+        metric1Label: t('appareils', 'temperature'),
         metric1Value: `${m.temperature_c.toFixed(1)}°C`,
         metric1Color: m.temperature_c > 60 ? '#DC2626' : 'var(--foreground)',
-        metric2Label: 'Vibrations', 
+        metric2Label: t('appareils', 'vibrations'), 
         metric2Value: `${m.vibration_hz.toFixed(1)} Hz`, 
         metric2Progress: m.vibration_hz > 20 ? 100 : (m.vibration_hz / 20) * 100, 
         metric2Color: m.vibration_hz > 20 ? '#DC2626' : 'var(--primary)',
-        alertType: m.status === 'alerte' ? 'Intervention Requise' : '',
+        alertType: m.status === 'alerte' ? t('appareils', 'interventionRequired') : '',
         marque: m.marque,
         modele: m.modele,
         icon: m.status === 'alerte' ? <AlertOctagon size={24} color="#DC2626" /> : <ActivitySquare size={24} color="var(--primary)" />
@@ -165,20 +167,20 @@ export default function AppareilsPage() {
     <div>
       <div className="page-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Équipements Enregistrés</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>{t('appareils', 'title')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            Surveillance en temps réel et diagnostics IA sur <strong>{appareils.length} équipements actifs</strong>.
+            {t('appareils', 'subtitle')} <strong>{appareils.length} {t('appareils', 'activeDevices')}</strong>.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <button className="btn-secondary" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', borderColor: 'var(--primary)', color: 'var(--foreground)' }} onClick={() => { fetchSites(); setIsMediaModalOpen(true); }}>
-            📷 Analyser Flux Vidéo (IA)
+            📷 {t('appareils', 'analyzeMedia')}
           </button>
           <button className="btn-secondary" style={{ width: 'auto', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#DC2626', borderColor: '#FCA5A5' }} onClick={triggerFakeAlert}>
-            <AlertTriangle size={18} /> Simuler Capteur (Alerte)
+            <AlertTriangle size={18} /> {t('appareils', 'simulateAlert')}
           </button>
           <button className="btn-primary" style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }} onClick={() => { fetchSites(); setIsModalOpen(true); }}>
-            <Plus size={18} /> Ajouter un Équipement
+            <Plus size={18} /> {t('appareils', 'addDevice')}
           </button>
         </div>
       </div>
@@ -187,7 +189,7 @@ export default function AppareilsPage() {
       <div className="grid-4-col" style={{ marginBottom: '32px' }}>
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>PUISSANCE TOTALE</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{t('appareils', 'totalPower').toUpperCase()}</div>
             <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700 }}>Actuel</div>
           </div>
           <div style={{ fontSize: '32px', fontWeight: 800 }}>{totalPower.toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>kW</span></div>
@@ -195,7 +197,7 @@ export default function AppareilsPage() {
 
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>SANTÉ IA MOYENNE</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{t('appareils', 'avgHealth').toUpperCase()}</div>
             <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
               {appareils.length === 0 || appareils.filter(a => a.status === 'alerte').length === 0 ? 'Optimal' : 'Attention'} <ShieldCheck size={12} />
             </div>
@@ -208,7 +210,7 @@ export default function AppareilsPage() {
 
         <div className="glass-card" style={{ padding: '20px', border: '1px solid #DC2626', borderLeft: '4px solid #DC2626' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>ALERTES ACTIVES</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{t('appareils', 'activeAlerts').toUpperCase()}</div>
             <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700 }}>Critique ⚠</div>
           </div>
           <div style={{ fontSize: '32px', fontWeight: 800, color: '#DC2626' }}>{appareils.filter(a => a.status === 'alerte').length < 10 ? `0${appareils.filter(a => a.status === 'alerte').length}` : appareils.filter(a => a.status === 'alerte').length} <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Noeuds</span></div>
@@ -216,7 +218,7 @@ export default function AppareilsPage() {
 
         <div className="glass-card" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>PUISSANCE MOYENNE</div>
+            <div style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{t('appareils', 'avgPower').toUpperCase()}</div>
             <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700 }}>Active ⚡</div>
           </div>
           <div style={{ fontSize: '32px', fontWeight: 800 }}>
@@ -229,7 +231,7 @@ export default function AppareilsPage() {
       {/* Filters Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', backgroundColor: 'rgba(15,23,42,0.02)', padding: '12px 20px', borderRadius: '12px', border: '1px solid var(--surface-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>Filtrer par Site :</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('appareils', 'filterBySite')}</span>
           <select 
             value={filterSiteId} 
             onChange={(e) => setFilterSiteId(e.target.value)}
@@ -252,7 +254,7 @@ export default function AppareilsPage() {
           </select>
         </div>
         <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>
-          Affichage de <strong style={{ color: 'var(--foreground)' }}>{filteredAppareils.length}</strong> sur <strong>{appareils.length}</strong> équipements
+          {t('appareils', 'showing')} <strong style={{ color: 'var(--foreground)' }}>{filteredAppareils.length}</strong> {t('appareils', 'of')} <strong>{appareils.length}</strong> {t('appareils', 'devicesWord')}
         </div>
       </div>
 
@@ -262,7 +264,7 @@ export default function AppareilsPage() {
           <div key={app.id} className="glass-card" style={{ 
             padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column',
             borderTop: `4px solid ${app.status === 'actif' ? 'var(--primary)' : app.status === 'alerte' ? 'var(--danger)' : 'var(--surface-border)'}`,
-            backgroundColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.05)' : app.status === 'hors ligne' ? 'rgba(255, 255, 255, 0.01)' : 'transparent',
+            backgroundColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.05)' : app.status === 'hors ligne' ? 'rgba(15, 23, 42, 0.02)' : 'transparent',
             borderColor: app.status === 'alerte' ? 'rgba(239, 68, 68, 0.2)' : 'var(--surface-border)'
           }}>
             <div style={{ padding: '24px' }}>
@@ -311,7 +313,7 @@ export default function AppareilsPage() {
             <div style={{ marginTop: 'auto', padding: '16px', borderTop: `1px solid ${app.status === 'alerte' ? 'rgba(239, 68, 68, 0.2)' : 'var(--surface-border)'}`, backgroundColor: 'transparent' }}>
               {app.status === 'alerte' ? (
                 <button onClick={() => router.push('/dashboard/predictions')} className="btn-primary" style={{ backgroundColor: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', width: '100%', border: 'none', cursor: 'pointer' }}>
-                  <AlertTriangle size={16} /> Lancer Diagnostic d'Urgence
+                  <AlertTriangle size={16} /> {t('appareils', 'launchDiagnostic')}
                 </button>
               ) : app.status === 'hors ligne' ? (
                 <button onClick={() => resetMachine(app.id)} className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
@@ -337,7 +339,7 @@ export default function AppareilsPage() {
         <div className="nk-modal-overlay">
           <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '24px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Ajouter un Équipement</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: 700 }}>{t('appareils', 'addDevice')}</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 ✖
               </button>

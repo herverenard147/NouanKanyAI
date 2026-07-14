@@ -5,8 +5,10 @@ import { Activity, Server, ShieldAlert, Cpu, Globe, Zap, Database, CheckCircle, 
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { API_URL } from '@/lib/api';
 import { authHeaders, getCurrentUser } from '@/lib/auth';
+import { useLanguage } from '@/lib/i18n';
 
 export default function AdminDashboardPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState("");
@@ -64,11 +66,11 @@ export default function AdminDashboardPage() {
       });
       const json = await res.json();
       if (!json.error) {
-        showNotification(`${machineId} réinitialisé.`);
+        showNotification(`${machineId} ${t('admin', 'resetDone')}`);
         if (managingUser) openManageUser(managingUser);
       }
     } catch (err) {
-      showNotification("Erreur lors de la réinitialisation.");
+      showNotification(t('admin', 'resetError'));
     }
   };
 
@@ -82,14 +84,14 @@ export default function AdminDashboardPage() {
       });
       const json = await res.json();
       if (!json.error) {
-        showNotification(newRole ? `${u.name} est maintenant administrateur.` : `${u.name} n'est plus administrateur.`);
+        showNotification(newRole ? `${u.name} ${t('admin', 'nowAdmin')}` : `${u.name} ${t('admin', 'noLongerAdmin')}`);
         setManagingUser({ ...u, platform_role: newRole });
         fetchAdminMetrics();
       } else {
         showNotification(json.error);
       }
     } catch (err) {
-      showNotification("Erreur lors du changement de rôle.");
+      showNotification(t('admin', 'roleChangeError'));
     }
   };
 
@@ -109,7 +111,7 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--primary)' }}>
-        Chargement des métriques globales...
+        {t('admin', 'loadingMetrics')}
       </div>
     );
   }
@@ -117,7 +119,7 @@ export default function AdminDashboardPage() {
   if (!data) {
     return (
       <div style={{ padding: '40px', color: 'var(--text-muted)' }}>
-        Impossible de charger les métriques. Vérifiez que le backend est lancé.
+        {t('admin', 'loadError')}
       </div>
     );
   }
@@ -128,9 +130,9 @@ export default function AdminDashboardPage() {
         <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
           <span style={{ color: 'var(--primary)' }}>NouanKanyAI</span>
         </div>
-        <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Centre de Contrôle Global</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>{t('admin', 'title')}</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          Supervision globale de l'infrastructure, gestion des comptes et statistiques d'activité des utilisateurs.
+          {t('admin', 'subtitle')}
         </p>
       </div>
 
@@ -139,36 +141,36 @@ export default function AdminDashboardPage() {
         <div className="glass-card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <Globe color="var(--primary)" size={24} />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>ACTIF</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>{t('admin', 'active')}</span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Sites Industriels</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('admin', 'industrialSites')}</div>
           <div style={{ fontSize: '32px', fontWeight: 800 }}>{data.platform.total_sites}</div>
         </div>
 
         <div className="glass-card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <Zap color="#F59E0B" size={24} />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>EN LIGNE</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>{t('admin', 'online')}</span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Machines Supervisées</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('admin', 'supervisedMachines')}</div>
           <div style={{ fontSize: '32px', fontWeight: 800 }}>{data.platform.active_machines} <span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>/ {data.platform.total_machines}</span></div>
         </div>
 
         <div className="glass-card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <Activity color="#10B981" size={24} />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>ÉCONOMIES</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '12px' }}>{t('admin', 'savings')}</span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Impact Énergétique (Global)</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('admin', 'globalImpact')}</div>
           <div style={{ fontSize: '24px', fontWeight: 800 }}>{data.platform.global_savings_xof.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>FCFA</span></div>
         </div>
 
         <div className="glass-card" style={{ padding: '24px', border: '1px solid var(--primary)', backgroundColor: 'rgba(15, 114, 68, 0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
             <Database color="var(--primary)" size={24} />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFF', backgroundColor: 'var(--primary)', padding: '2px 8px', borderRadius: '12px' }}>REVENU</span>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFF', backgroundColor: 'var(--primary)', padding: '2px 8px', borderRadius: '12px' }}>{t('admin', 'revenue')}</span>
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>MRR (Gain-Share 10%)</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('admin', 'mrr')}</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--primary)' }}>{data.platform.revenue_xof.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} <span style={{ fontSize: '14px' }}>FCFA</span></div>
         </div>
       </div>
@@ -181,19 +183,19 @@ export default function AdminDashboardPage() {
           {/* User Directory */}
           <div className="glass-card">
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--foreground)' }}>
-              👥 Annuaire des Utilisateurs ({data.users?.length || 0})
+              👥 {t('admin', 'userDirectory')} ({data.users?.length || 0})
             </h3>
 
             <div style={{ overflowX: 'auto' }}>
               <table className="audit-table">
                 <thead>
                   <tr>
-                    <th>Utilisateur</th>
-                    <th>Rôle</th>
-                    <th style={{ textAlign: 'center' }}>Sites</th>
-                    <th style={{ textAlign: 'center' }}>Machines</th>
-                    <th>Dernière Activité</th>
-                    <th>Statut</th>
+                    <th>{t('admin', 'userCol')}</th>
+                    <th>{t('admin', 'roleCol')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('admin', 'sitesCol')}</th>
+                    <th style={{ textAlign: 'center' }}>{t('admin', 'machinesCol')}</th>
+                    <th>{t('admin', 'lastActivity')}</th>
+                    <th>{t('admin', 'statusCol')}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -224,14 +226,14 @@ export default function AdminDashboardPage() {
                       </td>
                       <td>
                         <button onClick={() => openManageUser(u)} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <Settings2 size={12} /> Gérer
+                          <Settings2 size={12} /> {t('admin', 'manageUser')}
                         </button>
                       </td>
                     </tr>
                   ))}
                   {(!data.users || data.users.length === 0) && (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Aucun utilisateur enregistré.</td>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>{t('admin', 'noUsers')}</td>
                     </tr>
                   )}
                 </tbody>
@@ -242,7 +244,7 @@ export default function AdminDashboardPage() {
           {/* User Activities */}
           <div className="glass-card">
             <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--foreground)' }}>
-              ⚡ Activités Récentes des Utilisateurs
+              ⚡ {t('admin', 'recentActivities')}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -272,7 +274,7 @@ export default function AdminDashboardPage() {
                 </div>
               ))}
               {(!data.recent_activities || data.recent_activities.length === 0) && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>Aucune activité récente.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>{t('admin', 'noActivities')}</div>
               )}
             </div>
           </div>
@@ -284,40 +286,40 @@ export default function AdminDashboardPage() {
           {/* MLOps Summary */}
           <div className="glass-card">
             <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Cpu size={16} color="var(--primary)" /> Santé des Modèles Prédictifs
+              <Cpu size={16} color="var(--primary)" /> {t('admin', 'modelHealth')}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>PRÉCISION XGBOOST</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'xgboostAccuracy')}</span>
                 <span style={{ fontWeight: 700, color: '#10B981', fontSize: '13px' }}>{data.ml_health.xgboost_accuracy}%</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>TAUX D'ERREUR (MAPE)</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'errorRate')}</span>
                 <span style={{ fontWeight: 700, color: '#F59E0B', fontSize: '13px' }}>{data.ml_health.xgboost_mape}%</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>ANOMALIES DÉTECTÉES</span>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'anomaliesDetected')}</span>
                 <span style={{ fontWeight: 700, color: '#EF4444', fontSize: '13px' }}>{data.ml_health.isolation_forest_anomalies_detected}</span>
               </div>
             </div>
 
-            <button onClick={() => showNotification("Le ré-entraînement à la demande depuis l'interface n'est pas encore disponible.")} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
-              Réentraîner les modèles
+            <button onClick={() => showNotification(t('admin', 'retrainSoon'))} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
+              {t('admin', 'retrainModels')}
             </button>
           </div>
 
           {/* System Status */}
           <div className="glass-card">
             <h3 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-              <Server size={16} color="var(--primary)" /> État du Système
+              <Server size={16} color="var(--primary)" /> {t('admin', 'systemStatus')}
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Network size={16} color="var(--text-muted)" />
-                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Disponibilité API</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'apiUptime')}</span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.api_uptime}</span>
               </div>
@@ -325,7 +327,7 @@ export default function AdminDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Database size={16} color="var(--text-muted)" />
-                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Base de Données</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'dbStatus')}</span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.database_status}</span>
               </div>
@@ -333,7 +335,7 @@ export default function AdminDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <ShieldAlert size={16} color="var(--text-muted)" />
-                  <span style={{ fontWeight: 600, fontSize: '12px' }}>Registre d'Audit</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'auditLedger')}</span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.blockchain_ledger}</span>
               </div>
@@ -341,8 +343,8 @@ export default function AdminDashboardPage() {
               <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '12px', borderRadius: '8px', marginTop: '4px', display: 'flex', gap: '10px' }}>
                 <CheckCircle color="#10B981" size={18} style={{ flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '11px', color: '#10B981', marginBottom: '2px' }}>Systèmes Opérationnels</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latence API: {data.system.avg_latency_ms}ms.</div>
+                  <div style={{ fontWeight: 700, fontSize: '11px', color: '#10B981', marginBottom: '2px' }}>{t('admin', 'systemsOperational')}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t('admin', 'avgLatency')}: {data.system.avg_latency_ms}ms.</div>
                 </div>
               </div>
             </div>
@@ -356,7 +358,7 @@ export default function AdminDashboardPage() {
         <div className="nk-modal-overlay">
           <div className="glass-card nk-modal-content" style={{ maxWidth: '540px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Gérer {managingUser.name}</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('admin', 'manage')} {managingUser.name}</h2>
               <button onClick={() => setManagingUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
@@ -366,15 +368,15 @@ export default function AdminDashboardPage() {
             {myRole === 'superadmin' && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', border: '1px solid var(--surface-border)', borderRadius: '8px', marginBottom: '20px' }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 700 }}>Rôle plateforme</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Un administrateur peut assister les clients mais ne peut pas gérer les rôles.</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700 }}>{t('admin', 'platformRole')}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t('admin', 'adminHelperText')}</div>
                 </div>
                 <button
                   onClick={() => toggleAdminRole(managingUser)}
                   className={managingUser.platform_role === 'admin' ? 'btn-secondary' : 'btn-primary'}
                   style={{ width: 'auto', padding: '8px 16px', fontSize: '12px', cursor: 'pointer', border: managingUser.platform_role === 'admin' ? '' : 'none' }}
                 >
-                  {managingUser.platform_role === 'admin' ? 'Rétrograder' : 'Promouvoir en Admin'}
+                  {managingUser.platform_role === 'admin' ? t('admin', 'demote') : t('admin', 'promote')}
                 </button>
               </div>
             )}
@@ -382,21 +384,21 @@ export default function AdminDashboardPage() {
             {managedFacturation && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '20px' }}>
                 <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>ÉCONOMIES (MOIS)</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>{t('admin', 'savingsMonth')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--primary)' }}>{managedFacturation.grossSavingsThisMonth.toLocaleString('fr-FR')} FCFA</div>
                 </div>
                 <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>FACTURES CIE</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>{t('admin', 'cieBills')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 800 }}>{managedFacturation.billCount}</div>
                 </div>
                 <div style={{ padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>FACTURES GAIN-SHARE</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>{t('admin', 'gainShareInvoices')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 800 }}>{managedFacturation.invoiceCount}</div>
                 </div>
               </div>
             )}
 
-            <h3 style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '12px' }}>ÉQUIPEMENTS ({managedMachines.length})</h3>
+            <h3 style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '12px' }}>{t('admin', 'equipment')} ({managedMachines.length})</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
               {managedMachines.map((m) => (
                 <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: '1px solid var(--surface-border)', borderRadius: '8px' }}>
@@ -408,14 +410,14 @@ export default function AdminDashboardPage() {
                     <span className={`status-badge ${m.status === 'actif' ? 'status-verified' : 'status-backup'}`}>● {m.status}</span>
                     {m.status === 'alerte' && (
                       <button onClick={() => adminResetMachine(m.machine_id)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                        <Power size={12} /> Réinitialiser
+                        <Power size={12} /> {t('admin', 'reset')}
                       </button>
                     )}
                   </div>
                 </div>
               ))}
               {managedMachines.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '12px' }}>Aucun équipement enregistré pour cet utilisateur.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '12px' }}>{t('admin', 'noEquipment')}</div>
               )}
             </div>
           </div>

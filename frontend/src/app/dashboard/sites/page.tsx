@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Factory, MapPin, Activity, AlertCircle, X } from 'lucide-react';
 import { getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/lib/i18n';
 
 export default function SitesPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [sites, setSites] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
 
@@ -95,15 +97,15 @@ export default function SitesPage() {
       <div className="page-header-row" style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
-            <span style={{ color: 'var(--primary)' }}>Infrastructure</span> / Gestion des Sites
+            <span style={{ color: 'var(--primary)' }}>{t('nav', 'sites')}</span> / {t('sites', 'breadcrumb')}
           </div>
-          <h1 className="text-gradient" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>Sites Industriels</h1>
+          <h1 className="text-gradient" style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>{t('sites', 'title')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            Supervisez la consommation énergétique de l'ensemble de vos installations géographiques.
+            {t('sites', 'subtitle')}
           </p>
         </div>
         <button className="btn-primary" style={{ width: 'auto', padding: '10px 20px' }} onClick={() => setIsModalOpen(true)}>
-          + Ajouter un Site
+          {t('sites', 'addSiteBtn')}
         </button>
       </div>
 
@@ -128,36 +130,36 @@ export default function SitesPage() {
 
             <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Charge Actuelle</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('sites', 'currentLoad')}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '18px', fontWeight: 800, color: 'var(--foreground)' }}>
                   <Activity size={18} color="var(--secondary)" /> {site.power}
                 </div>
               </div>
-              
+
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Appareils Connectés</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('sites', 'connectedDevices')}</div>
                 <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--foreground)' }}>{site.devices}</div>
               </div>
 
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>Statut IA</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('sites', 'aiStatus')}</div>
                 {site.alerts > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#EF4444', fontWeight: 700, fontSize: '13px', backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 12px', borderRadius: '20px' }}>
-                    <AlertCircle size={14} /> {site.alerts} Alerte(s)
+                    <AlertCircle size={14} /> {site.alerts} {t('sites', 'alertsCount')}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 700, fontSize: '13px', backgroundColor: 'var(--primary-dim)', border: '1px solid rgba(16, 185, 129, 0.2)', padding: '4px 12px', borderRadius: '20px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary)' }}></span> Optimal
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary)' }}></span> {t('sites', 'optimal')}
                   </div>
                 )}
               </div>
-              
-              <button 
-                className="btn-secondary" 
+
+              <button
+                className="btn-secondary"
                 style={{ width: 'auto' }}
                 onClick={() => router.push(`/dashboard/appareils?siteId=${site.id}`)}
               >
-                Gérer le site
+                {t('sites', 'manageSite')}
               </button>
             </div>
           </div>
@@ -169,39 +171,39 @@ export default function SitesPage() {
         <div className="nk-modal-overlay">
           <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: 'var(--surface)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Ajouter un nouveau site</h2>
+              <h2 style={{ fontSize: '20px', fontWeight: 700 }}>{t('sites', 'addSite')}</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddSite}>
               <div className="input-group">
-                <label className="input-label">Nom du site</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
+                <label className="input-label">{t('sites', 'siteName')}</label>
+                <input
+                  type="text"
+                  className="input-field"
                   placeholder="Ex: Usine Sud"
                   value={newSiteName}
                   onChange={(e) => setNewSiteName(e.target.value)}
-                  required 
+                  required
                 />
               </div>
               <div className="input-group">
-                <label className="input-label">Localisation</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
+                <label className="input-label">{t('sites', 'location')}</label>
+                <input
+                  type="text"
+                  className="input-field"
                   placeholder="Ex: Koumassi"
                   value={newSiteLocation}
                   onChange={(e) => setNewSiteLocation(e.target.value)}
-                  required 
+                  required
                 />
               </div>
-              
+
               <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>Annuler</button>
-                <button type="submit" className="btn-primary">Ajouter</button>
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>{t('common', 'cancel')}</button>
+                <button type="submit" className="btn-primary">{t('common', 'add')}</button>
               </div>
             </form>
           </div>

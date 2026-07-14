@@ -4,25 +4,34 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUp, signIn, getCurrentUser } from '@/lib/auth';
 import Image from 'next/image';
+import { useLanguage } from '@/lib/i18n';
+import LanguageToggle from '@/components/LanguageToggle';
 
 const HERO_SLIDES = [
   {
     image: '/hero_energy_control_1783840324094.png',
-    title: "Le Futur de l'Énergie",
-    subtitle: 'Optimisez Votre Consommation, Maximisez Vos Économies.',
-    desc: "NouanKanyAI est votre plateforme de gestion énergétique intelligente. Reprenez le contrôle de vos installations électriques : analysez votre consommation en temps réel, identifiez les gaspillages et laissez-nous automatiser vos équipements pour une rentabilité maximale.",
+    title: { fr: "Le Futur de l'Énergie", en: 'The Future of Energy' },
+    subtitle: { fr: 'Optimisez Votre Consommation, Maximisez Vos Économies.', en: 'Optimize Your Consumption, Maximize Your Savings.' },
+    desc: {
+      fr: "NouanKanyAI est votre plateforme de gestion énergétique intelligente. Reprenez le contrôle de vos installations électriques : analysez votre consommation en temps réel, identifiez les gaspillages et laissez-nous automatiser vos équipements pour une rentabilité maximale.",
+      en: 'NouanKanyAI is your smart energy management platform. Take back control of your electrical installations: analyze your consumption in real time, identify waste, and let us automate your equipment for maximum profitability.',
+    },
   },
   {
     image: '/hero_ai_automation_1783840362282.png',
-    title: 'Une IA qui Surveille Votre Réseau 24/7',
-    subtitle: "Détectez les Anomalies Avant qu'elles ne Coûtent Cher.",
-    desc: "Nos modèles de Machine Learning (XGBoost, Isolation Forest) analysent en continu vos machines et votre infrastructure électrique pour anticiper les pannes, prévenir les surchauffes et sécuriser votre production.",
+    title: { fr: 'Une IA qui Surveille Votre Réseau 24/7', en: 'An AI That Watches Your Grid 24/7' },
+    subtitle: { fr: "Détectez les Anomalies Avant qu'elles ne Coûtent Cher.", en: 'Catch Anomalies Before They Get Expensive.' },
+    desc: {
+      fr: "Nos modèles de Machine Learning (XGBoost, Isolation Forest) analysent en continu vos machines et votre infrastructure électrique pour anticiper les pannes, prévenir les surchauffes et sécuriser votre production.",
+      en: 'Our Machine Learning models (XGBoost, Isolation Forest) continuously analyze your machines and electrical infrastructure to anticipate failures, prevent overheating, and secure your production.',
+    },
   },
 ];
 
 export default function Home() {
   const router = useRouter();
-  
+  const { lang, t } = useLanguage();
+
   // Carousel State
   const [currentSlide, setCurrentSlide] = useState(0);
   
@@ -114,7 +123,7 @@ export default function Home() {
         >
           <Image
             src={slide.image}
-            alt={slide.title}
+            alt={slide.title[lang]}
             fill
             style={{ objectFit: 'cover' }}
             priority={index === 0}
@@ -159,17 +168,22 @@ export default function Home() {
               NouankanyAI
             </span>
           </div>
-          <h1 className="hero-title">{HERO_SLIDES[currentSlide].title}</h1>
-          <h2 className="hero-subtitle">{HERO_SLIDES[currentSlide].subtitle}</h2>
+          <h1 className="hero-title">{HERO_SLIDES[currentSlide].title[lang]}</h1>
+          <h2 className="hero-subtitle">{HERO_SLIDES[currentSlide].subtitle[lang]}</h2>
           <p className="hero-desc">
-            {HERO_SLIDES[currentSlide].desc}
+            {HERO_SLIDES[currentSlide].desc[lang]}
           </p>
           <div className="hero-actions">
             <button className="btn-glow" onClick={() => openAuthModal('register')}>
-              Commencer l'Optimisation
+              {t('landing', 'cta')}
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Language Toggle */}
+      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 25 }}>
+        <LanguageToggle dark />
       </div>
 
       {/* Carousel Indicators */}
@@ -190,12 +204,10 @@ export default function Home() {
           
           <div style={{ marginBottom: '32px' }}>
             <h3 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '12px' }}>
-              {authMode === 'login' ? 'Bienvenue' : 'Créer un compte'}
+              {authMode === 'login' ? t('landing', 'welcome') : t('landing', 'createAccount')}
             </h3>
             <p style={{ fontSize: '15px', lineHeight: 1.5 }}>
-              {authMode === 'login' 
-                ? 'Connectez-vous pour accéder à votre nœud industriel sécurisé.' 
-                : 'Rejoignez le réseau NouanKanyAI pour optimiser votre consommation.'}
+              {authMode === 'login' ? t('landing', 'loginDesc') : t('landing', 'registerDesc')}
             </p>
           </div>
 
@@ -208,11 +220,11 @@ export default function Home() {
           <form onSubmit={handleAuthSubmit}>
             {authMode === 'register' && (
               <div className="input-group">
-                <label className="input-label">Nom complet</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="John Doe" 
+                <label className="input-label">{t('common', 'fullName')}</label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="John Doe"
                   value={nom}
                   onChange={(e) => setNom(e.target.value)}
                   required
@@ -221,7 +233,7 @@ export default function Home() {
             )}
             
             <div className="input-group">
-              <label className="input-label">Adresse Email</label>
+              <label className="input-label">{t('common', 'email')}</label>
               <input 
                 type="email" 
                 className="input-field" 
@@ -233,7 +245,7 @@ export default function Home() {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Mot de passe</label>
+              <label className="input-label">{t('common', 'password')}</label>
               <input 
                 type="password" 
                 className="input-field" 
@@ -246,7 +258,7 @@ export default function Home() {
 
             {authMode === 'register' && (
               <div className="input-group">
-                <label className="input-label">Type de compte</label>
+                <label className="input-label">{t('common', 'accountType')}</label>
                 <select 
                   className="input-field" 
                   style={{ appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px top 50%', backgroundSize: '12px auto' }}
@@ -261,14 +273,14 @@ export default function Home() {
             )}
 
             <button type="submit" className="btn-glow" style={{ marginTop: '8px' }} disabled={loading}>
-              {loading ? 'Chargement...' : (authMode === 'login' ? 'Accéder au panneau de contrôle' : 'Créer mon espace')}
+              {loading ? t('common', 'loading') : (authMode === 'login' ? t('landing', 'loginCta') : t('landing', 'registerCta'))}
             </button>
           </form>
 
           <div style={{ marginTop: '32px', textAlign: 'center', position: 'relative' }}>
             <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'rgba(15,23,42,0.1)', zIndex: 1 }}></div>
             <span style={{ position: 'relative', background: 'var(--surface-solid)', padding: '0 16px', color: '#64748b', fontSize: '13px', zIndex: 2 }}>
-              OU
+              {t('landing', 'or')}
             </span>
           </div>
 
@@ -282,7 +294,7 @@ export default function Home() {
                 setError('');
               }}
             >
-              {authMode === 'login' ? "Demander un accès entreprise (S'inscrire)" : "J'ai déjà un identifiant. Se connecter"}
+              {authMode === 'login' ? t('landing', 'switchToRegister') : t('landing', 'switchToLogin')}
             </button>
           </div>
         </div>

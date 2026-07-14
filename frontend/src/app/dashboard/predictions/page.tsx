@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Bot, Sparkles, Zap, ShieldAlert, Loader2, Lightbulb, CheckCircle2, Settings, X } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 import { authHeaders } from '@/lib/auth';
+import { useLanguage } from '@/lib/i18n';
 
 const DEFAULT_THRESHOLDS = { temperature_max_c: 60, vibration_max_hz: 45, surconsommation_ratio: 1.2 };
 
 export default function PredictionsPage() {
+  const { t } = useLanguage();
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [isThresholdsOpen, setIsThresholdsOpen] = useState(false);
@@ -107,14 +109,14 @@ export default function PredictionsPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'stretch' }}>
               {rec.gain_fcfa > 0 ? (
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>GAIN ESTIMÉ : {rec.gain_fcfa.toLocaleString('fr-FR')} XOF</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>{t('predictions', 'estimatedGain')} : {rec.gain_fcfa.toLocaleString('fr-FR')} XOF</div>
               ) : rec.type === 'alerte' ? (
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>ACTION CRITIQUE — INTERVENTION HUMAINE REQUISE</div>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>{t('predictions', 'criticalAction')}</div>
               ) : null}
 
               {rec.auto_resolu ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, color: 'var(--primary)', padding: '8px 14px', borderRadius: '20px', backgroundColor: 'var(--primary-dim)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                  <CheckCircle2 size={14} /> Résolu automatiquement par l'IA
+                  <CheckCircle2 size={14} /> {t('predictions', 'resolvedByAI')}
                 </div>
               ) : (
                 <button
@@ -136,17 +138,15 @@ export default function PredictionsPage() {
       <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '8px', letterSpacing: '0.05em' }}>
-            <span style={{ color: 'var(--primary)' }}>Assistant IA</span> / Recommandations & Conseils
+            <span style={{ color: 'var(--primary)' }}>{t('nav', 'predictions')}</span> / {t('predictions', 'subtitle')}
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>Optimisez votre consommation</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px', color: 'var(--foreground)' }}>{t('predictions', 'title')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px', maxWidth: '720px' }}>
-            L'IA analyse vos équipements en continu (XGBoost, Isolation Forest et notre catalogue d'équipements) pour vous
-            alerter sur les urgences et vous conseiller sur des actions concrètes — y compris remplacer un appareil par un
-            modèle équivalent mais plus économe. Pour discuter avec l'assistant, utilisez la bulle de chat en bas à droite.
+            {t('predictions', 'desc')}
           </p>
         </div>
         <button onClick={() => setIsThresholdsOpen(true)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', cursor: 'pointer' }}>
-          <Settings size={16} /> Configurer les seuils d'alerte
+          <Settings size={16} /> {t('predictions', 'configThresholds')}
         </button>
       </div>
 
@@ -154,17 +154,17 @@ export default function PredictionsPage() {
         <div className="nk-modal-overlay">
           <div className="glass-card nk-modal-content" style={{ maxWidth: '440px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Seuils d'alerte</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 700 }}>{t('predictions', 'thresholdsTitle')}</h2>
               <button onClick={() => setIsThresholdsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-              Définissez à partir de quand l'IA doit déclencher une alerte critique sur vos équipements.
+              {t('predictions', 'thresholdsDesc')}
             </p>
 
             <div className="input-group">
-              <label className="input-label">Température maximale avant alerte (°C)</label>
+              <label className="input-label">{t('predictions', 'tempThreshold')}</label>
               <input
                 type="number" className="input-field" min="1" step="1"
                 value={thresholds.temperature_max_c}
@@ -172,7 +172,7 @@ export default function PredictionsPage() {
               />
             </div>
             <div className="input-group">
-              <label className="input-label">Vibration maximale avant alerte (Hz)</label>
+              <label className="input-label">{t('predictions', 'vibThreshold')}</label>
               <input
                 type="number" className="input-field" min="1" step="1"
                 value={thresholds.vibration_max_hz}
@@ -180,21 +180,21 @@ export default function PredictionsPage() {
               />
             </div>
             <div className="input-group">
-              <label className="input-label">Sensibilité à la surconsommation (multiplicateur vs. prédiction IA)</label>
+              <label className="input-label">{t('predictions', 'ratioThreshold')}</label>
               <input
                 type="number" className="input-field" min="1.01" step="0.05"
                 value={thresholds.surconsommation_ratio}
                 onChange={(e) => setThresholds({ ...thresholds, surconsommation_ratio: parseFloat(e.target.value) })}
               />
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                Ex: 1.2 = alerte si la consommation actuelle dépasse de 20% la prédiction normale de l'IA.
+                {t('predictions', 'ratioHint')}
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button type="button" className="btn-secondary" onClick={() => setIsThresholdsOpen(false)} style={{ cursor: 'pointer' }}>Annuler</button>
+              <button type="button" className="btn-secondary" onClick={() => setIsThresholdsOpen(false)} style={{ cursor: 'pointer' }}>{t('common', 'cancel')}</button>
               <button type="button" className="btn-primary" onClick={saveThresholds} disabled={savingThresholds} style={{ cursor: 'pointer' }}>
-                {savingThresholds ? 'Enregistrement...' : 'Enregistrer'}
+                {savingThresholds ? t('common', 'saving') : t('common', 'save')}
               </button>
             </div>
           </div>
@@ -204,7 +204,7 @@ export default function PredictionsPage() {
       {alerts.length > 0 && (
         <div style={{ marginBottom: '32px' }}>
           <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldAlert size={16} color="#DC2626" /> ALERTES — INTERVENTION HUMAINE REQUISE ({alerts.length})
+            <ShieldAlert size={16} color="#DC2626" /> {t('predictions', 'alertsHeader')} ({alerts.length})
             {loadingRecs && <Loader2 size={16} className="animate-spin text-primary" />}
           </h3>
           <div className="grid-2-equal">
@@ -215,13 +215,13 @@ export default function PredictionsPage() {
 
       <div>
         <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Lightbulb size={16} color="#F59E0B" /> CONSEILS & OPTIMISATIONS ({tips.length})
+          <Lightbulb size={16} color="#F59E0B" /> {t('predictions', 'tipsHeader')} ({tips.length})
           {loadingRecs && <Loader2 size={16} className="animate-spin text-primary" />}
         </h3>
 
         {!loadingRecs && tips.length === 0 && alerts.length === 0 ? (
           <div className="glass-card" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-            Aucune recommandation pour le moment. Votre installation est optimale !
+            {t('predictions', 'noRecommendations')}
           </div>
         ) : (
           <div className="grid-2-equal">

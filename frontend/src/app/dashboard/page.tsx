@@ -6,6 +6,7 @@ import { ArrowUpRight, Zap, Target, Power, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
+import { useLanguage } from '@/lib/i18n';
 
 // Génère un profil de consommation journalier réaliste à partir de la puissance totale des machines
 function generateDailyProfile(totalKw: number) {
@@ -33,6 +34,7 @@ function generateDailyProfile(totalKw: number) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [user, setUser] = useState<any>(null);
   
   // États pour les appareils venant de l'API
@@ -112,10 +114,10 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <div>
           <h1 className="text-gradient" style={{ fontSize: '32px', fontWeight: 800, marginBottom: '6px' }}>
-            Bonjour, {user.nom.split(' ')[0]} 👋
+            {t('dashboardHome', 'hello')}, {user.nom.split(' ')[0]} 👋
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-            Voici la vue d'ensemble de votre infrastructure énergétique.
+            {t('dashboardHome', 'overview')}
           </p>
         </div>
       </div>
@@ -146,7 +148,7 @@ export default function DashboardPage() {
                 <AlertTriangle size={16} color="#fff" />
               </div>
               <div style={{ fontWeight: 700, color: '#f87171', fontSize: '15px' }}>
-                {alerts.length} alerte{alerts.length > 1 ? 's' : ''} active{alerts.length > 1 ? 's' : ''}
+                {alerts.length} {t('dashboardHome', 'activeAlerts')}
               </div>
             </div>
             <button
@@ -154,7 +156,7 @@ export default function DashboardPage() {
               className="btn-secondary"
               style={{ width: 'auto', padding: '6px 14px', fontSize: '12px', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#f87171', cursor: 'pointer' }}
             >
-              Voir toutes les alertes
+              {t('dashboardHome', 'viewAllAlerts')}
             </button>
           </div>
 
@@ -176,7 +178,7 @@ export default function DashboardPage() {
             ))}
             {alerts.length > 3 && (
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', paddingTop: '4px' }}>
-                + {alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''} alerte{alerts.length - 3 > 1 ? 's' : ''}
+                + {alerts.length - 3} {t('dashboardHome', 'moreAlerts')}
               </div>
             )}
           </div>
@@ -187,7 +189,7 @@ export default function DashboardPage() {
         {/* KPI 1 : Conso */}
         <div className="glass-card glow-card-cyan">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Consommation (Aujourd'hui)</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('dashboardHome', 'consumptionToday')}</div>
             <div style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(6, 182, 212, 0.15)' }}>
               <Zap size={16} color="var(--secondary)" />
             </div>
@@ -196,14 +198,14 @@ export default function DashboardPage() {
             {totalConso.toFixed(1)} <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>kW</span>
           </div>
           <div style={{ color: 'var(--primary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-            <ArrowUpRight size={14} /> {machines.filter(m => m.status === 'actif').length} appareil(s) actif(s) sur {machines.length}
+            <ArrowUpRight size={14} /> {machines.filter(m => m.status === 'actif').length} {t('dashboardHome', 'activeDevices')} {machines.length}
           </div>
         </div>
 
         {/* KPI 2 : Économies */}
         <div className="glass-card glow-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Économies Générées (Mois)</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('dashboardHome', 'savingsMonth')}</div>
             <div style={{ backgroundColor: 'var(--primary-light)', padding: '8px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
               <Target size={16} color="var(--primary)" />
             </div>
@@ -215,7 +217,7 @@ export default function DashboardPage() {
             } <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600 }}>XOF</span>
           </div>
           <div style={{ color: 'var(--primary)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
-            <ArrowUpRight size={14} /> Économies vérifiées (actions IA journalisées ce mois)
+            <ArrowUpRight size={14} /> {t('dashboardHome', 'verifiedSavings')}
           </div>
         </div>
       </div>
@@ -223,7 +225,7 @@ export default function DashboardPage() {
       <div className="grid-2-1">
         {/* Graphique */}
         <div className="glass-card" style={{ height: '380px', padding: '28px' }}>
-          <h3 style={{ marginBottom: '24px', fontWeight: 700, fontSize: '16px', color: 'var(--foreground)' }}>Évolution de la consommation</h3>
+          <h3 style={{ marginBottom: '24px', fontWeight: 700, fontSize: '16px', color: 'var(--foreground)' }}>{t('dashboardHome', 'consumptionEvolution')}</h3>
           <div style={{ width: '100%', height: 'calc(100% - 40px)' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -261,8 +263,8 @@ export default function DashboardPage() {
         {/* Contrôle des Appareils Favoris */}
         <div className="glass-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ fontWeight: 700, fontSize: '16px', color: 'var(--foreground)' }}>Appareils Énergivores</h3>
-            <span onClick={() => router.push('/dashboard/appareils')} style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer' }}>VOIR TOUT</span>
+            <h3 style={{ fontWeight: 700, fontSize: '16px', color: 'var(--foreground)' }}>{t('dashboardHome', 'energyHungry')}</h3>
+            <span onClick={() => router.push('/dashboard/appareils')} style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.05em', cursor: 'pointer' }}>{t('dashboardHome', 'viewAll').toUpperCase()}</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -274,7 +276,7 @@ export default function DashboardPage() {
                 padding: '16px', 
                 border: '1px solid var(--surface-border)', 
                 borderRadius: '12px',
-                backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                backgroundColor: 'rgba(15, 23, 42, 0.02)',
                 transition: 'all 0.2s ease'
               }}
               className="nav-item-hover-only" // Added simple border hover

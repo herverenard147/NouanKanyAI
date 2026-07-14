@@ -8,18 +8,20 @@ import { LayoutDashboard, Factory, Plug, Bot, Receipt, LogOut, Zap, Menu, X, Use
 import { signOut, getCurrentUser, authHeaders } from '@/lib/auth';
 import { API_URL } from '@/lib/api';
 import ChatWidget from './ChatWidget';
-
-const SEARCHABLE_PAGES = [
-  { href: '/dashboard',            label: 'Tableau de Bord' },
-  { href: '/dashboard/sites',       label: 'Sites' },
-  { href: '/dashboard/appareils',   label: 'Appareils' },
-  { href: '/dashboard/predictions', label: 'Assistant IA' },
-  { href: '/dashboard/facturation', label: 'Facturation' },
-];
+import { useLanguage } from '@/lib/i18n';
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
+  const SEARCHABLE_PAGES = [
+    { href: '/dashboard',            label: t('nav', 'dashboard') },
+    { href: '/dashboard/sites',       label: t('nav', 'sites') },
+    { href: '/dashboard/appareils',   label: t('nav', 'appareils') },
+    { href: '/dashboard/predictions', label: t('nav', 'predictions') },
+    { href: '/dashboard/facturation', label: t('nav', 'facturation') },
+  ];
   const [user, setUser] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -142,11 +144,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   const navItems = [
-    { href: '/dashboard',             label: 'Tableau de Bord', icon: LayoutDashboard, exact: true },
-    { href: '/dashboard/sites',        label: 'Sites',           icon: Factory },
-    { href: '/dashboard/appareils',    label: 'Appareils',       icon: Plug },
-    { href: '/dashboard/predictions',  label: 'Assistant IA',    icon: Bot },
-    { href: '/dashboard/facturation',  label: 'Facturation',     icon: Receipt },
+    { href: '/dashboard',             label: t('nav', 'dashboard'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/sites',        label: t('nav', 'sites'),       icon: Factory },
+    { href: '/dashboard/appareils',    label: t('nav', 'appareils'),   icon: Plug },
+    { href: '/dashboard/predictions',  label: t('nav', 'predictions'), icon: Bot },
+    { href: '/dashboard/facturation',  label: t('nav', 'facturation'), icon: Receipt },
   ];
 
   return (
@@ -187,13 +189,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             borderRadius: '20px', padding: '4px 10px'
           }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
-            <span style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.05em' }}>SYSTÈMES OPÉRATIONNELS</span>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.05em' }}>{t('nav', 'systemsUp').toUpperCase()}</span>
           </div>
         </div>
 
         {/* Nav Label */}
         <div style={{ padding: '20px 20px 8px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.1em', position: 'relative', zIndex: 1 }}>
-          NAVIGATION
+          {t('nav', 'navigation').toUpperCase()}
         </div>
 
         {/* Nav Links */}
@@ -222,7 +224,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             onClick={openProfile}
             style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-            title="Mon profil"
+            title={t('common', 'myProfile')}
           >
             <div style={{
               width: '32px', height: '32px', borderRadius: '50%',
@@ -241,7 +243,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
           <button
             onClick={handleLogout}
-            title="Se déconnecter"
+            title={t('common', 'logout')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: '#64748b', display: 'flex', alignItems: 'center',
@@ -283,7 +285,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span style={{ color: '#64748b', fontSize: '14px' }}>⌕</span>
             <input
               type="text"
-              placeholder="Rechercher des sites, appareils, pages..."
+              placeholder={t('common', 'search')}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
@@ -305,12 +307,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }}>
                 {!hasResults && (
                   <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    Aucun résultat pour « {searchQuery} »
+                    {t('common', 'noResults')} : « {searchQuery} »
                   </div>
                 )}
                 {matchedPages.length > 0 && (
                   <div>
-                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>PAGES</div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{t('common', 'pages').toUpperCase()}</div>
                     {matchedPages.map(p => (
                       <div key={p.href} onClick={() => { router.push(p.href); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
@@ -323,7 +325,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
                 {matchedSites.length > 0 && (
                   <div>
-                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>SITES</div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>{t('nav', 'sites').toUpperCase()}</div>
                     {matchedSites.map(s => (
                       <div key={s.id} onClick={() => { router.push('/dashboard/sites'); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
@@ -337,7 +339,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
                 {matchedMachines.length > 0 && (
                   <div>
-                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>APPAREILS</div>
+                    <div style={{ padding: '8px 14px', fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', borderTop: '1px solid var(--surface-border)' }}>{t('common', 'devices').toUpperCase()}</div>
                     {matchedMachines.map(m => (
                       <div key={m.machine_id} onClick={() => { router.push('/dashboard/appareils'); setSearchOpen(false); setSearchQuery(''); }}
                         style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer', fontSize: '13px' }}
@@ -355,6 +357,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Right badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <LanguageToggle />
             {user.platform_role && (
               <Link href="/admin-portal" style={{
                 fontSize: '11px', fontWeight: 700, color: '#F59E0B',
@@ -363,7 +366,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 padding: '5px 12px', borderRadius: '20px',
                 textDecoration: 'none'
               }}>
-                Portail Admin →
+                {t('nav', 'adminPortal')} →
               </Link>
             )}
             <div style={{
@@ -374,11 +377,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               display: 'flex', alignItems: 'center', gap: '6px'
             }}>
               <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981' }} />
-              API CONNECTÉE
+              {t('nav', 'apiConnected').toUpperCase()}
             </div>
             <div
               onClick={openProfile}
-              title="Mon profil"
+              title={t('common', 'myProfile')}
               style={{
                 width: '32px', height: '32px', borderRadius: '50%',
                 background: 'linear-gradient(135deg, #10b981, #059669)',
@@ -403,7 +406,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="glass-card nk-modal-content" style={{ maxWidth: '420px', backgroundColor: 'var(--surface-solid)', border: '1px solid var(--surface-border)', padding: '28px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <UserIcon size={20} /> Mon Profil
+                <UserIcon size={20} /> {t('common', 'myProfile')}
               </h2>
               <button onClick={() => setIsProfileOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                 <X size={20} />
@@ -429,7 +432,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
 
             <div className="input-group">
-              <label className="input-label">Nom complet</label>
+              <label className="input-label">{t('common', 'fullName')}</label>
               <input
                 type="text"
                 className="input-field"
@@ -439,7 +442,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div className="input-group">
-              <label className="input-label">Type de compte</label>
+              <label className="input-label">{t('common', 'accountType')}</label>
               <select
                 className="input-field"
                 style={{ backgroundColor: 'var(--input-bg)', border: '1px solid var(--surface-border)', color: 'var(--foreground)' }}
@@ -453,9 +456,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-              <button type="button" className="btn-secondary" onClick={() => setIsProfileOpen(false)}>Fermer</button>
+              <button type="button" className="btn-secondary" onClick={() => setIsProfileOpen(false)}>{t('common', 'close')}</button>
               <button type="button" className="btn-primary" onClick={saveProfile} disabled={savingProfile}>
-                {savingProfile ? 'Enregistrement...' : 'Enregistrer'}
+                {savingProfile ? t('common', 'saving') : t('common', 'save')}
               </button>
             </div>
 
@@ -465,7 +468,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={handleLogout}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.06)', color: '#ef4444', cursor: 'pointer', fontWeight: 600 }}
               >
-                <LogOut size={16} /> Se déconnecter
+                <LogOut size={16} /> {t('common', 'logout')}
               </button>
             </div>
           </div>

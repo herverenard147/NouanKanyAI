@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldAlert, LogOut } from 'lucide-react';
 import { getCurrentUser, signOut } from '@/lib/auth';
+import { useLanguage } from '@/lib/i18n';
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function AdminPortalLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [user, setUser] = useState<any>(null);
 
@@ -44,16 +47,19 @@ export default function AdminPortalLayout({ children }: { children: React.ReactN
           <div>
             <div style={{ fontWeight: 800, fontSize: '15px' }}>NouanKanyAI — Portail Admin</div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Connecté en tant que {user?.nom} ({user?.platform_role === 'superadmin' ? 'Superadmin' : 'Admin'})
+              {t('admin', 'connectedAs')} {user?.nom} ({user?.platform_role === 'superadmin' ? 'Superadmin' : 'Admin'})
             </div>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '8px 14px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
-        >
-          <LogOut size={14} /> Déconnexion
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <LanguageToggle />
+          <button
+            onClick={handleLogout}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '8px 14px', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
+          >
+            <LogOut size={14} /> {t('admin', 'logoutBtn')}
+          </button>
+        </div>
       </div>
       <div style={{ padding: '32px' }}>
         {children}
