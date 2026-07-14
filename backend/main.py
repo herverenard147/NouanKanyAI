@@ -500,7 +500,7 @@ async def upload_bill_photo(file: UploadFile = File(...), user_id: str = Depends
                 {"text": prompt}
             ]
         }],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300}
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300, "thinkingConfig": {"thinkingBudget": 0}}
     }
 
     try:
@@ -1023,7 +1023,7 @@ def chat_with_gemini(req: ChatRequest):
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 800}
+        "generationConfig": {"temperature": 0.3, "maxOutputTokens": 800, "thinkingConfig": {"thinkingBudget": 0}}
     }
 
     try:
@@ -1070,7 +1070,7 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
                 }
             ]
         }],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 200}
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 200, "thinkingConfig": {"thinkingBudget": 0}}
     }
 
     try:
