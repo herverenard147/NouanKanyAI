@@ -16,6 +16,12 @@ function formatText(text: string) {
     .replace(/\*/g, '•');
 }
 
+// Cache le temps d'un court instant pour éviter de re-télécharger la liste des
+// machines à chaque message d'une même conversation (ça ajoutait un aller-retour
+// réseau complet avant même de contacter l'IA).
+const MACHINES_CACHE_TTL_MS = 30000;
+let machinesCache: { data: any; fetchedAt: number } | null = null;
+
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([DEFAULT_MESSAGE]);
@@ -61,11 +67,18 @@ export default function ChatWidget() {
   const sendMessage = async (text: string) => {
     if (!text.trim() || sending) return;
     setSending(true);
-    setMessages(prev => [...prev, { sender: 'user', text }, { sender: 'ai', text: '...' }]);
+    setMessages(prev => [...prev, { sender: 'user', text }, { sender: 'ai', thinking: true }]);
 
     try {
-      const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
-      const currentMachinesState = await machinesRes.json();
+      let currentMachinesState;
+      const now = Date.now();
+      if (machinesCache && now - machinesCache.fetchedAt < MACHINES_CACHE_TTL_MS) {
+        currentMachinesState = machinesCache.data;
+      } else {
+        const machinesRes = await fetch(`${API_URL}/api/machines`, { headers: authHeaders() });
+        currentMachinesState = await machinesRes.json();
+        machinesCache = { data: currentMachinesState, fetchedAt: now };
+      }
 
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
@@ -152,11 +165,17 @@ export default function ChatWidget() {
                 <div style={{
                   backgroundColor: msg.sender === 'user' ? 'var(--primary)' : 'var(--surface)',
                   color: msg.sender === 'user' ? '#fff' : 'var(--foreground)',
-                  padding: '10px 14px', borderRadius: '12px',
+                  padding: msg.thinking ? '12px 14px' : '10px 14px', borderRadius: '12px',
                   border: msg.sender === 'ai' ? '1px solid var(--surface-border)' : 'none',
                   fontSize: '13px', lineHeight: '1.5', whiteSpace: 'pre-wrap'
                 }}>
-                  {formatText(msg.text)}
+                  {msg.thinking ? (
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <span className="chat-typing-dot" style={{ animationDelay: '0ms' }} />
+                      <span className="chat-typing-dot" style={{ animationDelay: '150ms' }} />
+                      <span className="chat-typing-dot" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  ) : formatText(msg.text)}
                 </div>
               </div>
             ))}
@@ -165,18 +184,30 @@ export default function ChatWidget() {
           <div style={{ padding: '12px', borderTop: '1px solid var(--surface-border)', backgroundColor: 'var(--surface)', display: 'flex', gap: '8px' }}>
             <input
               type="text"
-              placeholder="Demandez une analyse, un rapport..."
+              placeholder={sending ? "L'IA réfléchit..." : "Demandez une analyse, un rapport..."}
               value={inputMessage}
+              disabled={sending}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--surface-border)', outline: 'none', color: 'var(--foreground)', backgroundColor: 'var(--background-alt)', fontSize: '13px' }}
+              style={{ flex: 1, padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--surface-border)', outline: 'none', color: 'var(--foreground)', backgroundColor: 'var(--background-alt)', fontSize: '13px', opacity: sending ? 0.6 : 1 }}
             />
-            <button onClick={handleSend} style={{ backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <button onClick={handleSend} disabled={sending} style={{ backgroundColor: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: sending ? 'default' : 'pointer', flexShrink: 0, opacity: sending ? 0.6 : 1 }}>
               <Send size={16} />
             </button>
           </div>
         </div>
       )}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .chat-typing-dot {
+          width: 6px; height: 6px; border-radius: 50%;
+          background: var(--text-muted);
+          animation: chatTypingBounce 1s infinite ease-in-out;
+        }
+        @keyframes chatTypingBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+          30% { transform: translateY(-4px); opacity: 1; }
+        }
+      `}} />
     </>
   );
 }
