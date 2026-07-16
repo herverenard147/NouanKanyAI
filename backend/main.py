@@ -5,22 +5,181 @@ Endpoints: /api/predict, /api/anomaly, /api/recommend
 
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
+from fastapi import FastAPI, Request, UploadFile, File, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import base64
+import hashlib
+import io
 import joblib
+import json
 import os
+import random
+import re
+import threading
 import time
 import uuid
 import requests
+from collections import deque, OrderedDict
 from dotenv import load_dotenv
+from PIL import Image
 
 # Session HTTP persistante (réutilise la connexion TCP/TLS vers Gemini au lieu
 # d'en rouvrir une à chaque appel, ce qui réduisait la marge avant timeout).
 _gemini_session = requests.Session()
+
+# Horodatage de démarrage du process, pour exposer process_uptime_seconds dans
+# /api/admin/metrics. time.monotonic() plutôt que time.time() : ne saute pas si
+# l'horloge système est ajustée (NTP, changement de fuseau, etc.) pendant l'exécution.
+PROCESS_START_TIME = time.monotonic()
+
+# AI_MODE="mock" court-circuite tout appel réseau vers Gemini (voir call_gemini()) :
+# utile en développement/tests pour ne pas consommer le quota gratuit partagé avec
+# la démo. "live" (défaut) appelle réellement Gemini — le défaut est volontairement
+# "live" pour ne jamais casser la prod silencieusement si la variable est omise.
+AI_MODE = os.environ.get("AI_MODE", "live").strip().lower()
+
+class TTLCache:
+    """Cache LRU en mémoire, borné en taille (éviction du moins récemment utilisé),
+    avec TTL optionnel par entrée (None = pas d'expiration, seule la taille borne le
+    cache). Pas de Redis : un process Render se relance de toute façon en redéploiement,
+    ce qui vide naturellement le cache — aucun état à faire persister entre process.
+    N'expose que ce dont les endpoints ont besoin : get/set + un taux de hit pour les logs."""
+    def __init__(self, max_size: int, ttl_seconds: Optional[float], name: str):
+        self.max_size = max_size
+        self.ttl_seconds = ttl_seconds
+        self.name = name
+        self._store: "OrderedDict[str, tuple[str, float]]" = OrderedDict()
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key: str) -> Optional[str]:
+        entry = self._store.get(key)
+        if entry is None:
+            self.misses += 1
+            return None
+        value, expires_at = entry
+        if self.ttl_seconds is not None and time.time() > expires_at:
+            del self._store[key]
+            self.misses += 1
+            return None
+        self._store.move_to_end(key)
+        self.hits += 1
+        return value
+
+    def set(self, key: str, value: str) -> None:
+        # Ne jamais mettre en cache une réponse vide (sinon un échec silencieux se fige).
+        if not value:
+            return
+        expires_at = (time.time() + self.ttl_seconds) if self.ttl_seconds is not None else float("inf")
+        self._store[key] = (value, expires_at)
+        self._store.move_to_end(key)
+        while len(self._store) > self.max_size:
+            self._store.popitem(last=False)
+
+    def hit_rate(self) -> float:
+        total = self.hits + self.misses
+        return round(100 * self.hits / total, 1) if total else 0.0
+
+# Un cache dédié par endpoint (namespaces séparés) : la même image pourrait en
+# théorie être envoyée à la fois à l'OCR facture et à l'analyse média, et ces deux
+# endpoints attendent des formats de réponse totalement différents (MOIS/MONTANT/KWH
+# vs STATUS/DESCRIPTION) — un cache partagé par hash d'image renverrait le mauvais
+# format à l'un des deux appelants.
+_chat_cache = TTLCache(max_size=100, ttl_seconds=3600, name="chat")   # TTL 1h
+_ocr_cache = TTLCache(max_size=100, ttl_seconds=None, name="ocr")     # pas de TTL : une facture ne change pas
+_media_cache = TTLCache(max_size=100, ttl_seconds=None, name="media") # idem
+
+def normalize_text(s: str) -> str:
+    """Normalise un texte pour la clé de cache du chat : minuscules, ponctuation
+    retirée, espaces compressés — pour que deux formulations quasi identiques
+    ('Bonjour !' vs 'bonjour') touchent la même entrée de cache."""
+    s = s.lower()
+    s = re.sub(r"[^\w\s]", "", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+IMAGE_MAX_DIMENSION = 1024
+IMAGE_JPEG_QUALITY = 85
+
+# Réponses mock : 2-3 par endpoint, format texte STRICTEMENT identique à ce que
+# Gemini renvoie réellement (mêmes préfixes de champs), préfixées [MOCK] pour ne
+# jamais pouvoir être confondues avec une vraie extraction en aval (notamment côté
+# OCR facture, où le texte se retrouve directement dans un enregistrement en base).
+MOCK_CHAT_RESPONSES = [
+    "[MOCK] Bonjour ! Ceci est une réponse simulée (AI_MODE=mock) — aucun appel Gemini n'a été émis. Comment puis-je vous aider ?",
+    "[MOCK] D'après le contexte fourni, vos équipements semblent globalement sous contrôle. (réponse simulée, AI_MODE=mock)",
+    "[MOCK] Je vous recommande de surveiller de près les machines à forte température. (réponse simulée, AI_MODE=mock)",
+]
+
+MOCK_OCR_RESPONSES = [
+    "MOIS: [MOCK] Février 2026\nMONTANT: 87450\nKWH: 312",
+    "MOIS: [MOCK] Mars 2026\nMONTANT: 156200\nKWH: 578",
+    "MOIS: [MOCK] Janvier 2026\nMONTANT: 64000\nKWH: 210",
+]
+
+MOCK_MEDIA_RESPONSES = [
+    "STATUS: NORMAL\nDESCRIPTION: [MOCK] Tout est en ordre (réponse simulée, AI_MODE=mock).",
+    "STATUS: ALERTE\nDESCRIPTION: [MOCK] Fumée détectée près du moteur (réponse simulée, AI_MODE=mock).",
+    "STATUS: NORMAL\nDESCRIPTION: [MOCK] Aucune anomalie visible (réponse simulée, AI_MODE=mock).",
+]
+
+def mock_gemini_response(payload: dict) -> dict:
+    """Génère une réponse simulée avec EXACTEMENT la même structure que l'API Gemini
+    réelle (candidates[0].content.parts[0].text) — c'est ce que tout le code appelant
+    lit, donc le mock doit avoir la même forme, sinon il ne teste rien de réel.
+    Détecte l'endpoint appelant en inspectant le contenu du payload (présence d'une
+    image + mots-clés propres au prompt de chaque endpoint), puisque call_gemini()
+    ne reçoit qu'un payload générique, sans identifiant d'endpoint."""
+    parts = payload.get("contents", [{}])[0].get("parts", [])
+    prompt_text = "".join(p.get("text", "") for p in parts)
+    has_image = any("inlineData" in p for p in parts)
+
+    if has_image and "facture d'électricité" in prompt_text:
+        text = random.choice(MOCK_OCR_RESPONSES)
+    elif has_image:
+        text = random.choice(MOCK_MEDIA_RESPONSES)
+    else:
+        text = random.choice(MOCK_CHAT_RESPONSES)
+
+    return {"candidates": [{"content": {"parts": [{"text": text}]}, "finishReason": "STOP"}]}
+
+def compress_image_for_gemini(file_bytes: bytes, mime_type: str, source: str) -> tuple[bytes, str]:
+    """Redimensionne (plus grand côté <= IMAGE_MAX_DIMENSION) et recompresse en JPEG
+    avant l'envoi à Gemini Vision, uniquement si l'image dépasse ce seuil. Ne touche
+    jamais aux vidéos (mime_type non-image) : Gemini les reçoit telles quelles.
+    `source` sert uniquement à identifier l'appelant dans les logs de taille."""
+    original_size = len(file_bytes)
+    if not mime_type or not mime_type.startswith("image/"):
+        print(f"[INFO] Compression image ({source}) : ignorée (mime_type={mime_type}), {original_size} octets envoyés tels quels.")
+        return file_bytes, mime_type
+
+    try:
+        img = Image.open(io.BytesIO(file_bytes))
+        width, height = img.size
+        if max(width, height) <= IMAGE_MAX_DIMENSION:
+            print(f"[INFO] Compression image ({source}) : sous le seuil ({width}x{height}), {original_size} octets envoyés tels quels.")
+            return file_bytes, mime_type
+
+        ratio = IMAGE_MAX_DIMENSION / max(width, height)
+        new_size = (max(1, int(width * ratio)), max(1, int(height * ratio)))
+        img = img.convert("RGB")
+        img = img.resize(new_size, Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=IMAGE_JPEG_QUALITY)
+        compressed_bytes = buf.getvalue()
+        print(
+            f"[INFO] Compression image ({source}) : {width}x{height} ({original_size} octets) "
+            f"-> {new_size[0]}x{new_size[1]} ({len(compressed_bytes)} octets), "
+            f"-{round(100 * (1 - len(compressed_bytes) / original_size))}%."
+        )
+        return compressed_bytes, "image/jpeg"
+    except Exception as e:
+        print(f"[WARN] Compression image ({source}) echouee ({type(e).__name__}), envoi de l'original ({original_size} octets).")
+        return file_bytes, mime_type
 
 def gemini_error_summary(e: Exception) -> str:
     """Résumé sûr d'une erreur d'appel Gemini pour les logs : jamais la chaîne brute de
@@ -29,27 +188,215 @@ def gemini_error_summary(e: Exception) -> str:
         return f"HTTP {e.response.status_code}"
     return type(e).__name__
 
-def call_gemini(payload: dict, timeout: int = 25, retries: int = 2) -> dict:
+GEMINI_RATE_LIMIT_PER_MINUTE = int(os.environ.get("GEMINI_RATE_LIMIT_PER_MINUTE", "10"))
+
+# Budget d'attente en file, SÉPARÉ du timeout réseau (`timeout` passé à call_gemini).
+# Échouer vite avec un message explicite vaut mieux que faire attendre l'utilisateur
+# 40s (le timeout réseau de l'OCR/média) pour obtenir exactement le même message
+# d'échec. Avant cette séparation, le budget de file réutilisait `timeout` : pire cas
+# par tentative = jusqu'à 40s de file + jusqu'à 40s réseau, multiplié par les
+# retries — largement plus de 2 minutes au total (voir calcul détaillé fourni à part).
+GEMINI_MAX_QUEUE_WAIT = float(os.environ.get("GEMINI_MAX_QUEUE_WAIT", "8"))
+
+# Version épinglée explicite, jamais un alias "-latest" : gemini-3.5-flash est le
+# modèle actuellement pointé par gemini-flash-latest (source : release notes Google,
+# ai.google.dev/gemini-api/docs/changelog). Épingler sur cette version explicite
+# neutralise le risque de bascule silencieuse par Google, sans changer le
+# comportement du produit en production.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+
+class RateLimiterSaturated(Exception):
+    """Levée quand l'attente pour un slot du limiteur dépasse le budget alloué —
+    à distinguer d'une erreur Gemini : ici, aucun appel réseau n'a été tenté."""
+    pass
+
+class GeminiRateLimiter:
+    """Limiteur de débit global vers Gemini : fenêtre glissante de 60s, plafond
+    configurable (GEMINI_RATE_LIMIT_PER_MINUTE). File d'attente plutôt que rejet
+    immédiat — un appelant bloque jusqu'à ce qu'un slot se libère, dans la limite
+    de max_wait_seconds, avant d'abandonner avec RateLimiterSaturated.
+
+    ATTENTION — n'est correct que pour UN SEUL process. Vérifié pour ce déploiement :
+    render.yaml lance `uvicorn main:app` sans --workers (1 process, défaut uvicorn)
+    sur le plan "starter" (1 instance, pas de bloc `scaling` = pas d'autoscaling).
+    Si l'un de ces deux points change (--workers > 1, ou plusieurs instances), ce
+    plafond en mémoire devient faux : chaque process aurait son propre plafond
+    indépendant, et le total réel envoyé à Gemini dépasserait la limite configurée
+    sans que rien ne le signale. Pas de solution multi-process ici (demanderait un
+    store partagé type Redis) — hors périmètre tant que le déploiement reste mono-process."""
+    def __init__(self, max_per_minute: int):
+        self.max_per_minute = max_per_minute
+        self._timestamps: deque = deque()
+        self._lock = threading.Lock()
+
+    def acquire(self, max_wait_seconds: float) -> None:
+        deadline = time.monotonic() + max_wait_seconds
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                while self._timestamps and now - self._timestamps[0] >= 60:
+                    self._timestamps.popleft()
+                if len(self._timestamps) < self.max_per_minute:
+                    self._timestamps.append(now)
+                    return
+                wait_hint = 60 - (now - self._timestamps[0])
+            if time.monotonic() >= deadline:
+                raise RateLimiterSaturated(
+                    f"Quota local Gemini saturé ({self.max_per_minute}/min) — délai d'attente dépassé."
+                )
+            time.sleep(max(0.05, min(wait_hint, deadline - time.monotonic(), 0.5)))
+
+_gemini_rate_limiter = GeminiRateLimiter(GEMINI_RATE_LIMIT_PER_MINUTE)
+
+GEMINI_METRICS_ENDPOINTS = ("chat", "ocr", "media")
+
+class GeminiMetrics:
+    """Compteurs d'observabilité du quota Gemini consommé, en mémoire (RAM du
+    process), par endpoint (chat/ocr/media). Chaque compteur n'est incrémenté
+    qu'au point exact où l'événement correspondant se produit (voir call_gemini()
+    et les 3 endpoints appelants) — jamais d'estimation, jamais de valeur par
+    défaut autre que 0.
+
+    Comme GeminiRateLimiter (voir sa docstring), valable seulement pour un
+    déploiement mono-process : chaque process aurait ses propres compteurs
+    indépendants, sans coordination entre eux."""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._real_calls_total = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+        self._real_calls_60s = {e: deque() for e in GEMINI_METRICS_ENDPOINTS}
+        self._real_calls_24h = {e: deque() for e in GEMINI_METRICS_ENDPOINTS}
+        self._cache_hits = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+        self._http_429 = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+        self._timeouts = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+        self._saturations = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+        self._mock_calls = {e: 0 for e in GEMINI_METRICS_ENDPOINTS}
+
+    @staticmethod
+    def _prune(dq: deque, now: float, seconds: float) -> None:
+        while dq and now - dq[0] >= seconds:
+            dq.popleft()
+
+    def record_real_call(self, endpoint: str) -> None:
+        """Un appel réseau a réellement été émis vers Gemini (chaque retry compte,
+        quel que soit le résultat de la tentative)."""
+        now = time.time()
+        with self._lock:
+            self._real_calls_total[endpoint] += 1
+            self._real_calls_60s[endpoint].append(now)
+            self._real_calls_24h[endpoint].append(now)
+            self._prune(self._real_calls_60s[endpoint], now, 60)
+            self._prune(self._real_calls_24h[endpoint], now, 86400)
+            total = sum(self._real_calls_total.values())
+        if total % 20 == 0:
+            print(f"[INFO] Gemini — appels réels cumulés (tous endpoints): {total}")
+
+    def record_cache_hit(self, endpoint: str) -> None:
+        with self._lock:
+            self._cache_hits[endpoint] += 1
+
+    def record_429(self, endpoint: str) -> None:
+        with self._lock:
+            self._http_429[endpoint] += 1
+
+    def record_timeout(self, endpoint: str) -> None:
+        with self._lock:
+            self._timeouts[endpoint] += 1
+
+    def record_saturation(self, endpoint: str) -> None:
+        with self._lock:
+            self._saturations[endpoint] += 1
+            total = sum(self._saturations.values())
+        if total % 20 == 0:
+            print(f"[INFO] Limiteur Gemini — saturations cumulées (tous endpoints): {total}")
+
+    def record_mock_call(self, endpoint: str) -> None:
+        with self._lock:
+            self._mock_calls[endpoint] += 1
+
+    def snapshot(self) -> dict:
+        now = time.time()
+        with self._lock:
+            endpoints = {}
+            for e in GEMINI_METRICS_ENDPOINTS:
+                self._prune(self._real_calls_60s[e], now, 60)
+                self._prune(self._real_calls_24h[e], now, 86400)
+                endpoints[e] = {
+                    "real_calls_total": self._real_calls_total[e],
+                    "real_calls_last_60s": len(self._real_calls_60s[e]),
+                    "real_calls_last_24h": len(self._real_calls_24h[e]),
+                    "cache_hits": self._cache_hits[e],
+                    "http_429_count": self._http_429[e],
+                    "timeouts_count": self._timeouts[e],
+                    "rate_limiter_saturations": self._saturations[e],
+                    "mock_calls": self._mock_calls[e],
+                }
+            return endpoints
+
+_gemini_metrics = GeminiMetrics()
+
+def call_gemini(payload: dict, endpoint: str, timeout: int = 25, retries: int = 2, model: str = None) -> dict:
     """Appelle l'API Gemini avec retry + backoff sur timeout/erreur réseau/429/503.
     La clé API est envoyée en en-tête (jamais dans l'URL) pour qu'elle ne puisse pas
-    se retrouver dans un message d'erreur ou un log."""
+    se retrouver dans un message d'erreur ou un log.
+
+    endpoint : "chat" | "ocr" | "media" — identifie le call site pour GeminiMetrics
+    (voir sa définition ci-dessus). Obligatoire, sans valeur par défaut : un
+    endpoint manquant produirait une métrique fausse plutôt qu'une erreur visible.
+
+    model : identifiant de modèle Gemini explicite. Si non fourni, retombe sur
+    GEMINI_MODEL (version épinglée par défaut, voir sa définition ci-dessus) — les
+    3 call sites actuels ne passent pas encore ce paramètre.
+
+    AI_MODE=mock : court-circuit total, aucun appel réseau (voir mock_gemini_response),
+    et donc aucun passage par le limiteur — placé en tout début de fonction, avant
+    toute construction d'URL/en-têtes. Seul le compteur "appels mockés" de
+    GeminiMetrics est incrémenté ici ; le compteur "appels réels" ne l'est jamais
+    en mode mock, puisque le code qui l'incrémente n'est jamais atteint.
+
+    Limiteur de débit : chaque tentative (y compris chaque retry — un retry est un
+    appel réseau comme un autre) doit acquérir un slot avant de contacter Gemini.
+    Le budget d'attente en file est GEMINI_MAX_QUEUE_WAIT, SÉPARÉ ET INDÉPENDANT de
+    `timeout` (le timeout HTTP de la requête elle-même) : l'attente en file ne
+    consomme pas le budget réseau, elle s'y ajoute. Pire cas par tentative : jusqu'à
+    GEMINI_MAX_QUEUE_WAIT secondes en file + jusqu'à `timeout` secondes d'appel
+    réseau. Échouer vite avec un message explicite (file courte, ~8s par défaut)
+    vaut mieux que faire attendre l'utilisateur aussi longtemps que le timeout
+    réseau (20-40s) pour obtenir exactement le même message d'échec. Une saturation
+    du limiteur n'est PAS retentée (retenter attendrait à nouveau sur la même
+    ressource saturée) : elle remonte immédiatement à l'appelant."""
+    if AI_MODE == "mock":
+        _gemini_metrics.record_mock_call(endpoint)
+        return mock_gemini_response(payload)
+
     gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+    model_name = model or GEMINI_MODEL
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
     headers = {"x-goog-api-key": gemini_api_key, "Content-Type": "application/json"}
 
     last_exc = None
     for attempt in range(retries + 1):
+        try:
+            _gemini_rate_limiter.acquire(max_wait_seconds=GEMINI_MAX_QUEUE_WAIT)
+        except RateLimiterSaturated:
+            _gemini_metrics.record_saturation(endpoint)
+            raise
+        _gemini_metrics.record_real_call(endpoint)
         try:
             resp = _gemini_session.post(url, json=payload, headers=headers, timeout=timeout)
             resp.raise_for_status()
             return resp.json()
         except Exception as e:
             last_exc = e
+            if isinstance(e, requests.exceptions.Timeout):
+                _gemini_metrics.record_timeout(endpoint)
+            elif isinstance(e, requests.exceptions.HTTPError) and e.response is not None and e.response.status_code == 429:
+                _gemini_metrics.record_429(endpoint)
             transient = isinstance(e, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)) or (
                 isinstance(e, requests.exceptions.HTTPError) and e.response is not None and e.response.status_code in (429, 503)
             )
             if transient and attempt < retries:
-                time.sleep(1.5 * (attempt + 1))
+                backoff = 1.5 * (2 ** attempt) + random.uniform(0, 1)
+                time.sleep(backoff)
                 continue
             break
     raise last_exc
@@ -113,19 +460,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+LATENCY_WINDOW_SECONDS = 300  # 5 minutes
+LATENCY_MAX_SAMPLES = 10000   # protection RAM en cas de burst
+
+class RequestLatencyMetrics:
+    """Latence moyenne des requêtes API, fenêtre glissante de 5 minutes, en mémoire
+    (RAM du process). Même patron que GeminiRateLimiter/GeminiMetrics : deque +
+    threading.Lock, purge des entrées expirées à chaque écriture.
+
+    Mono-process uniquement (voir GeminiRateLimiter pour le contexte de déploiement
+    Render) : chaque process aurait sa propre fenêtre, sans coordination."""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._samples: deque = deque()  # (timestamp, duration_ms)
+
+    def record(self, duration_ms: float) -> None:
+        now = time.monotonic()
+        with self._lock:
+            self._samples.append((now, duration_ms))
+            while self._samples and now - self._samples[0][0] >= LATENCY_WINDOW_SECONDS:
+                self._samples.popleft()
+            while len(self._samples) > LATENCY_MAX_SAMPLES:
+                self._samples.popleft()
+
+    def snapshot(self) -> tuple:
+        """Retourne (avg_ms, sample_count). (None, 0) si la fenêtre est vide —
+        jamais 0 ni une valeur inventée pour signaler l'absence de données."""
+        now = time.monotonic()
+        with self._lock:
+            while self._samples and now - self._samples[0][0] >= LATENCY_WINDOW_SECONDS:
+                self._samples.popleft()
+            count = len(self._samples)
+            if count == 0:
+                return (None, 0)
+            avg = sum(d for _, d in self._samples) / count
+            return (round(avg), count)
+
+_latency_metrics = RequestLatencyMetrics()
+
+@app.middleware("http")
+async def latency_tracking_middleware(request: Request, call_next):
+    """Chronomètre le cycle HTTP complet (y compris le temps d'attente réseau sur
+    un appel Gemini sortant, le cas échéant) — c'est la latence réellement perçue
+    par l'utilisateur, pas seulement le temps de calcul local.
+
+    Filtre : uniquement les vraies routes métier (/api/*), hors préflight OPTIONS.
+    Exclut de fait la racine "/" (health check Render, healthCheckPath dans
+    render.yaml) et les routes auto-générées FastAPI (/docs, /openapi.json,
+    /redoc), qui répondent en <1ms et fausseraient la moyenne vers le bas sans
+    représenter une latence perçue par un utilisateur réel."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        duration_ms = (time.perf_counter() - start) * 1000
+        _latency_metrics.record(duration_ms)
+    return response
+
 # Charger les modèles au démarrage
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'ml', 'models')
 xgb_data = None
+xgb_metrics = None  # dict (r2/mae_kw/mape_pct/dataset/computed_at) ou None si absent/illisible
 iso_data = None
 
 def load_models():
-    global xgb_data, iso_data
+    global xgb_data, xgb_metrics, iso_data
     xgb_path = os.path.join(MODELS_DIR, 'xgboost_model.pkl')
+    xgb_metrics_path = os.path.join(MODELS_DIR, 'xgboost_metrics.json')
     iso_path = os.path.join(MODELS_DIR, 'isolation_forest.pkl')
 
     if os.path.exists(xgb_path):
         xgb_data = joblib.load(xgb_path)
         print("[OK] Modele XGBoost charge.")
+        # Fichier de métriques distinct du .pkl (voir train_xgboost.py) : son absence
+        # ou son illisibilité ne doit JAMAIS empêcher le serveur de démarrer — un
+        # couplage dur entre entraînement ML et disponibilité de l'API serait
+        # inacceptable. Repli silencieux à None, jamais de valeur inventée.
+        try:
+            with open(xgb_metrics_path) as f:
+                xgb_metrics = json.load(f)
+            print(f"[OK] Metriques XGBoost chargees (r2={xgb_metrics.get('r2')}, mae_kw={xgb_metrics.get('mae_kw')}).")
+        except Exception as e:
+            xgb_metrics = None
+            print(f"[WARN] Metriques XGBoost absentes ou illisibles ({type(e).__name__}: {e}) — model_metrics restera a null.")
     else:
         print("[WARN] Modele XGBoost non trouve. Lancez d'abord train_xgboost.py")
 
@@ -204,6 +620,10 @@ def serialize_site(site: models.Site) -> dict:
 @app.on_event("startup")
 def startup():
     load_models()
+    if AI_MODE == "mock":
+        print("[INFO] AI_MODE=mock — aucun appel Gemini ne sera émis, réponses simulées sur les 3 endpoints IA.")
+    else:
+        print(f"[INFO] AI_MODE={AI_MODE} — appels Gemini réels actifs.")
 
 @app.get("/")
 def root():
@@ -258,6 +678,15 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     user.last_sign_in_at = datetime.utcnow()
     db.commit()
     maybe_bootstrap_superadmin(user, db)
+
+    # Télémétrie pour le flux "activités récentes" du portail admin — un échec
+    # d'insertion ici ne doit JAMAIS empêcher une connexion utilisateur de réussir.
+    try:
+        db.add(models.Activity(activity_type="connexion", user_id=user.id, description=f"Connexion de {user.nom}"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[WARN] Activity — échec journalisation connexion: {type(e).__name__}: {e}")
 
     token = create_access_token(str(user.id))
     return {"token": token, "user": serialize_user(user)}
@@ -475,63 +904,97 @@ def add_manual_bill(req: ManualBill, user_id: str = Depends(get_current_user_id)
     return serialize_bill(bill)
 
 @app.post("/api/bills/upload-photo")
-async def upload_bill_photo(file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+# Volontairement synchrone. FastAPI exécute en threadpool. Permet à
+# GeminiRateLimiter.acquire() (time.sleep bloquant) de fonctionner sans geler
+# l'event loop. Précédent : chat_with_gemini est déjà en def pour la même raison.
+def upload_bill_photo(file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Prend une photo de facture CIE, en extrait le mois/montant/consommation via Gemini
     Vision, et l'intègre directement dans l'historique de factures de l'utilisateur.
+
+    compress_image_for_gemini() validée par test A/B sur une photo WhatsApp réelle
+    (720x1280) : extraction MOIS/MONTANT/KWH strictement identique avec et sans
+    compression. Le cas d'une photo brute d'appareil à forte réduction (3000px+ ->
+    1024px) n'a PAS été testé faute d'échantillon disponible à ce jour. Le log
+    taille avant/après (dans compress_image_for_gemini) reste actif pour repérer
+    toute dérive si un cas plus extrême se présente en usage réel.
+
+    Cache par SHA-256 de l'image brute (avant compression), pas de TTL : la même
+    photo de facture renvoie toujours la même lecture, donc pas de raison de
+    l'expirer par le temps — seule la taille du cache (LRU) la fera sortir un jour.
     """
-    file_bytes = await file.read()
-    base64_data = base64.b64encode(file_bytes).decode("utf-8")
+    file_bytes = file.file.read()
     mime_type = file.content_type
+    # Hash calculé AVANT compression : la même photo doit toucher le cache même si
+    # les réglages de compression (résolution/qualité) changent plus tard.
+    image_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    prompt = (
-        "Ceci est une photo d'une facture d'électricité (CIE, Côte d'Ivoire, ou équivalent). "
-        "Extrait les informations suivantes et réponds STRICTEMENT sous ce format, une ligne par champ, "
-        "sans aucun texte additionnel :\n"
-        "MOIS: [le mois et l'année de facturation, ex: 'Mars 2026']\n"
-        "MONTANT: [le montant total à payer, en chiffres seulement, sans espace ni symbole, ex: 452000]\n"
-        "KWH: [la consommation en kWh si elle est visible sur la facture, en chiffres seulement, ou 'INCONNU' si absente]\n"
-        "Si l'image n'est pas une facture d'électricité lisible, réponds uniquement : MOIS: ERREUR"
-    )
+    text_response = _ocr_cache.get(image_hash) if AI_MODE != "mock" else None
+    if text_response is not None:
+        _gemini_metrics.record_cache_hit("ocr")
+        print(f"[INFO] Cache OCR HIT — taux de hit cumulé: {_ocr_cache.hit_rate()}%")
+    else:
+        file_bytes, mime_type = compress_image_for_gemini(file_bytes, mime_type, source="bills-upload-photo")
+        base64_data = base64.b64encode(file_bytes).decode("utf-8")
 
-    payload = {
-        "contents": [{
-            "parts": [
-                {"inlineData": {"mimeType": mime_type, "data": base64_data}},
-                {"text": prompt}
-            ]
-        }],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300, "thinkingConfig": {"thinkingBudget": 0}}
-    }
-
-    try:
-        result = call_gemini(payload, timeout=40, retries=1)
-        text_response = result['candidates'][0]['content']['parts'][0]['text']
-
-        month, amount, kwh = None, None, None
-        for line in text_response.split('\n'):
-            if line.startswith("MOIS:"):
-                month = line.replace("MOIS:", "").strip()
-            elif line.startswith("MONTANT:"):
-                raw = line.replace("MONTANT:", "").strip().replace(" ", "")
-                amount = float(raw) if raw.replace('.', '', 1).isdigit() else None
-            elif line.startswith("KWH:"):
-                raw = line.replace("KWH:", "").strip().replace(" ", "")
-                kwh = float(raw) if raw.replace('.', '', 1).isdigit() else None
-
-        if not month or month == "ERREUR" or amount is None:
-            return {"error": "Impossible de lire cette facture. Essayez une photo plus nette et bien cadrée."}
-
-        bill = models.ElectricityBill(
-            user_id=user_id, month=month, amount_xof=amount, kwh_consumed=kwh,
-            source="ocr", is_forecast=False,
+        prompt = (
+            "Ceci est une photo d'une facture d'électricité (CIE, Côte d'Ivoire, ou équivalent). "
+            "Extrait les informations suivantes et réponds STRICTEMENT sous ce format, une ligne par champ, "
+            "sans aucun texte additionnel :\n"
+            "MOIS: [le mois et l'année de facturation, ex: 'Mars 2026']\n"
+            "MONTANT: [le montant total à payer, en chiffres seulement, sans espace ni symbole, ex: 452000]\n"
+            "KWH: [la consommation en kWh si elle est visible sur la facture, en chiffres seulement, ou 'INCONNU' si absente]\n"
+            "Si l'image n'est pas une facture d'électricité lisible, réponds uniquement : MOIS: ERREUR"
         )
-        db.add(bill)
-        db.commit()
-        db.refresh(bill)
-        return {"status": "success", "bill": serialize_bill(bill)}
-    except Exception as e:
-        print(f"[WARN] Gemini invoice OCR error: {gemini_error_summary(e)}")
-        return {"error": "L'analyse IA de la facture a échoué (service momentanément indisponible). Réessayez ou saisissez-la manuellement."}
+
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"inlineData": {"mimeType": mime_type, "data": base64_data}},
+                    {"text": prompt}
+                ]
+            }],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 300, "thinkingConfig": {"thinkingBudget": 0}}
+        }
+
+        try:
+            result = call_gemini(payload, endpoint="ocr", timeout=40, retries=2)
+            text_response = result['candidates'][0]['content']['parts'][0]['text']
+        except RateLimiterSaturated as e:
+            print(f"[WARN] OCR facture — limiteur Gemini sature: {e}")
+            return {"error": "Quota local Gemini saturé, réessayez dans quelques instants."}
+        except Exception as e:
+            print(f"[WARN] Gemini invoice OCR error: {gemini_error_summary(e)}")
+            return {"error": "L'analyse IA de la facture a échoué (service momentanément indisponible). Réessayez ou saisissez-la manuellement."}
+
+        # Jamais d'erreur/exception ici (le except ci-dessus a déjà renvoyé), donc
+        # tout text_response qui arrive à ce point est un texte que Gemini a
+        # réellement généré — y compris "MOIS: ERREUR", un résultat valide en soi.
+        if AI_MODE != "mock":
+            _ocr_cache.set(image_hash, text_response)
+        print(f"[INFO] Cache OCR — taux de hit cumulé: {_ocr_cache.hit_rate()}% ({_ocr_cache.hits}/{_ocr_cache.hits + _ocr_cache.misses})")
+
+    month, amount, kwh = None, None, None
+    for line in text_response.split('\n'):
+        if line.startswith("MOIS:"):
+            month = line.replace("MOIS:", "").strip()
+        elif line.startswith("MONTANT:"):
+            raw = line.replace("MONTANT:", "").strip().replace(" ", "")
+            amount = float(raw) if raw.replace('.', '', 1).isdigit() else None
+        elif line.startswith("KWH:"):
+            raw = line.replace("KWH:", "").strip().replace(" ", "")
+            kwh = float(raw) if raw.replace('.', '', 1).isdigit() else None
+
+    if not month or month == "ERREUR" or amount is None:
+        return {"error": "Impossible de lire cette facture. Essayez une photo plus nette et bien cadrée."}
+
+    bill = models.ElectricityBill(
+        user_id=user_id, month=month, amount_xof=amount, kwh_consumed=kwh,
+        source="ocr-mock" if AI_MODE == "mock" else "ocr", is_forecast=False,
+    )
+    db.add(bill)
+    db.commit()
+    db.refresh(bill)
+    return {"status": "success", "bill": serialize_bill(bill)}
 
 @app.post("/api/bills/forecast")
 def generate_bill_forecast(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -608,10 +1071,99 @@ def confirm_bill_actual(bill_id: str, req: ActualBillAmount, user_id: str = Depe
     db.refresh(bill)
     return serialize_bill(bill)
 
+def fetch_recent_activities(db: Session, limit: int = 20) -> list:
+    """Agrège 5 sources hétérogènes en un flux "activités récentes" unique pour le
+    portail admin. 3 sources sont LUES depuis leurs tables existantes (délestages et
+    resets support via AuditLog, uploads OCR via ElectricityBill) ; 2 sont lues depuis
+    Activity, alimentée par écriture directe dans login()/analyze_machine_media()
+    (connexions, analyses média — voir leurs commentaires respectifs).
+
+    Chaque source est plafonnée à `limit` lignes AVANT fusion (inutile de charger plus
+    que ce qu'on gardera après tri). Le tri final se fait sur les datetime Python natifs,
+    PAS sur des chaînes ISO déjà formatées (un décalage de fuseau pourrait faire trier
+    des chaînes différemment de leurs vraies dates) — la sérialisation ISO n'a lieu
+    qu'au tout dernier moment, sur les 20 entrées déjà triées et tronquées.
+    """
+    raw = []  # liste de (datetime, dict partiel sans "timestamp" ni "user_name")
+
+    delestages = db.query(models.AuditLog).filter(
+        models.AuditLog.action.like("Délestage automatique%")
+    ).order_by(models.AuditLog.timestamp.desc()).limit(limit).all()
+    for a in delestages:
+        raw.append((a.timestamp, {"type": "delestage", "user_id": a.user_id, "ref_id": a.ref_hash, "extras": {}}))
+
+    resets = db.query(models.AuditLog).filter(
+        models.AuditLog.action.like("Réinitialisation par le support%")
+    ).order_by(models.AuditLog.timestamp.desc()).limit(limit).all()
+    for a in resets:
+        raw.append((a.timestamp, {"type": "reset_admin", "user_id": a.user_id, "ref_id": a.ref_hash, "extras": {}}))
+
+    bills = db.query(models.ElectricityBill).filter(
+        models.ElectricityBill.source.in_(["ocr", "ocr-mock"])
+    ).order_by(models.ElectricityBill.created_at.desc()).limit(limit).all()
+    for b in bills:
+        raw.append((b.created_at, {"type": "ocr_upload", "user_id": b.user_id, "ref_id": str(b.id), "extras": {}}))
+
+    connexions = db.query(models.Activity).filter(
+        models.Activity.activity_type == "connexion"
+    ).order_by(models.Activity.created_at.desc()).limit(limit).all()
+    for act in connexions:
+        raw.append((act.created_at, {"type": "connexion", "user_id": act.user_id, "ref_id": act.ref_id, "extras": {}}))
+
+    medias = db.query(models.Activity).filter(
+        models.Activity.activity_type.in_(["analyse_media_normal", "analyse_media_alerte"])
+    ).order_by(models.Activity.created_at.desc()).limit(limit).all()
+    for act in medias:
+        raw.append((act.created_at, {
+            "type": act.activity_type, "user_id": act.user_id, "ref_id": act.ref_id,
+            "extras": {"analysis_source": act.analysis_source},
+        }))
+
+    raw.sort(key=lambda pair: pair[0], reverse=True)
+    top = raw[:limit]
+
+    # Résolution user_name par une seule requête groupée (pas de N+1 par entrée).
+    user_ids = {entry["user_id"] for _, entry in top if entry["user_id"]}
+    users_by_id = {}
+    if user_ids:
+        for u in db.query(models.User).filter(models.User.id.in_(user_ids)).all():
+            users_by_id[u.id] = u.nom
+
+    result = []
+    for ts, entry in top:
+        result.append({
+            "type": entry["type"],
+            "timestamp": ts.isoformat() if ts else None,
+            "user_id": str(entry["user_id"]) if entry["user_id"] else None,
+            # None si user_id absent OU si l'utilisateur référencé a été supprimé
+            # depuis (users_by_id.get() sur une clé absente renvoie None).
+            "user_name": users_by_id.get(entry["user_id"]),
+            "ref_id": entry["ref_id"],
+            "extras": entry["extras"],
+        })
+    return result
+
 @app.get("/api/admin/metrics")
 def get_admin_metrics(admin_id: str = Depends(get_current_admin_user_id), db: Session = Depends(get_db)):
     """Retourne les métriques globales de la plateforme (réservé aux administrateurs)."""
     try:
+        # Check explicite, distinct des requêtes réelles ci-dessous : une connexion peut
+        # être "ouverte" mais bloquée (ex. lock long) sans lever immédiatement sur les
+        # requêtes suivantes. Timeout court côté DB (statement_timeout) pour ne jamais
+        # figer la route sur un check qui traîne. N'échappe PAS au try/except global —
+        # un échec ici est une vraie panne DB et doit suivre le même chemin
+        # {"error": ...} que n'importe quelle autre requête de cette fonction (voir
+        # TODO.md pour le chantier de réponse dégradée par section, hors périmètre ici).
+        try:
+            db.execute(text("SET LOCAL statement_timeout = '2000ms'"))
+            db.execute(text("SELECT 1"))
+            db_status = "connected"
+        except Exception as e:
+            print(f"[WARN] Admin metrics — check DB (SELECT 1) échoué: {type(e).__name__}: {e}")
+            raise
+
+        avg_latency_ms, latency_sample_count = _latency_metrics.snapshot()
+
         sites_data = db.query(models.Site).all()
         machines_data = db.query(models.Machine).all()
         users_data = db.query(models.User).order_by(models.User.created_at.asc()).all()
@@ -665,22 +1217,43 @@ def get_admin_metrics(admin_id: str = Depends(get_current_admin_user_id), db: Se
                 "revenue_xof": global_savings * 0.10  # 10% Gain-Share
             },
             "users": users,
-            "recent_activities": [],
+            "recent_activities": fetch_recent_activities(db),
             "ml_health": {
-                "xgboost_accuracy": 94.2,
-                "xgboost_mape": 5.8,  # Erreur absolue moyenne en %
                 "isolation_forest_anomalies_detected": anomalies_detected,
                 "model_drift_status": "NORMAL"
             },
+            "model_metrics": {
+                "xgboost": {
+                    "r2": xgb_metrics.get("r2") if xgb_metrics else None,
+                    "mae_kw": xgb_metrics.get("mae_kw") if xgb_metrics else None,
+                    "mape_pct": xgb_metrics.get("mape_pct") if xgb_metrics else None,
+                    "dataset": xgb_metrics.get("dataset") if xgb_metrics else None,
+                    "computed_at": xgb_metrics.get("computed_at") if xgb_metrics else None,
+                }
+            },
             "system": {
-                "api_uptime": "99.99%",
-                "avg_latency_ms": 42,
-                "database_status": "CONNECTED",
-                "blockchain_ledger": "SYNCED"
+                "process_uptime_seconds": round(time.monotonic() - PROCESS_START_TIME),
+                "avg_latency_ms": avg_latency_ms,
+                "sample_count": latency_sample_count,
+                "database_status": db_status,
             }
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/api/admin/gemini-metrics")
+def get_gemini_metrics(admin_id: str = Depends(get_current_admin_user_id)):
+    """Snapshot des compteurs d'observabilité du quota Gemini consommé (réservé aux
+    administrateurs, même dépendance que /api/admin/metrics). Compteurs en mémoire
+    du process courant uniquement (voir GeminiMetrics) — repartent à zéro à chaque
+    redéploiement/redémarrage."""
+    return {
+        "ai_mode": AI_MODE,
+        "gemini_model": GEMINI_MODEL,
+        "rate_limit_per_minute": GEMINI_RATE_LIMIT_PER_MINUTE,
+        "max_queue_wait_seconds": GEMINI_MAX_QUEUE_WAIT,
+        "endpoints": _gemini_metrics.snapshot(),
+    }
 
 class RoleUpdate(BaseModel):
     platform_role: Optional[str] = None  # None, "admin"
@@ -1017,8 +1590,27 @@ def summarize_machines_for_chat(context: List[dict]) -> str:
 
 @app.post("/api/chat")
 def chat_with_gemini(req: ChatRequest):
+    machines_summary = summarize_machines_for_chat(req.context)
+
+    # Le contexte machines fait partie de la clé : sinon deux questions identiques
+    # posées sur des parcs différents renverraient la même réponse en cache — un
+    # bug métier silencieux, pire qu'une absence de cache. Pas de cache en mode
+    # mock : aucun coût réseau à éviter, et ça garantit qu'une réponse [MOCK] ne
+    # peut jamais rester en cache après un repassage en AI_MODE=live (le cache est
+    # simplement jamais écrit tant qu'on est en mock).
+    cache_key = None
+    if AI_MODE != "mock":
+        cache_key = hashlib.sha256(
+            f"{normalize_text(req.message)}|{normalize_text(machines_summary)}".encode()
+        ).hexdigest()
+        cached = _chat_cache.get(cache_key)
+        if cached is not None:
+            _gemini_metrics.record_cache_hit("chat")
+            print(f"[INFO] Cache chat HIT — taux de hit cumulé: {_chat_cache.hit_rate()}%")
+            return {"response": cached}
+
     system_prompt = "Tu es NouanKanyAI Copilot, l'IA intelligente de l'application NouanKanyAI. Tu aides le responsable d'une usine ou d'un hotel a gerer sa consommation d'energie (electricite, machines). Reste professionnel et concis (reponses courtes, va a l'essentiel), et utilise le contexte fourni pour donner des reponses precises. Reponds toujours en francais, sauf si l'utilisateur ecrit explicitement dans une autre langue."
-    context_str = f"Etat actuel des machines :\n{summarize_machines_for_chat(req.context)}"
+    context_str = f"Etat actuel des machines :\n{machines_summary}"
     full_prompt = f"{system_prompt}\n\n{context_str}\n\nQuestion de l'utilisateur : {req.message}"
 
     payload = {
@@ -1027,15 +1619,24 @@ def chat_with_gemini(req: ChatRequest):
     }
 
     try:
-        result = call_gemini(payload, timeout=20, retries=1)
+        result = call_gemini(payload, endpoint="chat", timeout=20, retries=2)
         text = result['candidates'][0]['content']['parts'][0]['text']
+        if cache_key:
+            _chat_cache.set(cache_key, text)
+        print(f"[INFO] Cache chat — taux de hit cumulé: {_chat_cache.hit_rate()}% ({_chat_cache.hits}/{_chat_cache.hits + _chat_cache.misses})")
         return {"response": text}
+    except RateLimiterSaturated as e:
+        print(f"[WARN] Chat — limiteur Gemini sature: {e}")
+        return {"response": "Quota local saturé, réessayez dans quelques instants."}
     except Exception as e:
         print(f"[WARN] Gemini chat error: {gemini_error_summary(e)}")
         return {"response": "Désolé, l'assistant IA met trop de temps à répondre pour le moment. Réessayez dans quelques instants."}
 
 @app.post("/api/machines/{machine_id}/analyze-media")
-async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+# Volontairement synchrone. FastAPI exécute en threadpool. Permet à
+# GeminiRateLimiter.acquire() (time.sleep bloquant) de fonctionner sans geler
+# l'event loop. Précédent : chat_with_gemini est déjà en def pour la même raison.
+def analyze_machine_media(machine_id: str, file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     """Analyse un flux photo/vidéo d'une machine via Gemini Multimodal pour détecter une menace."""
     mach = db.query(models.Machine).filter(
         models.Machine.code_interne == machine_id, models.Machine.user_id == user_id
@@ -1043,108 +1644,157 @@ async def analyze_machine_media(machine_id: str, file: UploadFile = File(...), u
     if not mach:
         return {"error": "Machine non trouvée"}
 
-    # 1. Lire le fichier et l'encoder en base64
-    file_bytes = await file.read()
-    base64_data = base64.b64encode(file_bytes).decode("utf-8")
+    def log_media_activity(activity_type: str, analysis_source: str, description: str) -> None:
+        """Télémétrie pour le flux "activités récentes" du portail admin — TOUTES les
+        analyses (ALERTE et NORMAL), pas seulement celles qui déclenchent une alerte
+        (contrairement à AIAlert, écrit uniquement sur ALERTE). analysis_source
+        distingue une vraie analyse Gemini ("gemini") d'un résultat de repli par nom
+        de fichier ("fallback_filename", utilisé quand Gemini est indisponible) — axe
+        indépendant du résultat (activity_type), pour rester requêtable séparément
+        (ex. calcul d'un "fallback rate"). Silencieux : un échec d'insertion ne doit
+        jamais faire échouer une analyse déjà terminée."""
+        try:
+            db.add(models.Activity(
+                activity_type=activity_type, user_id=user_id, ref_id=mach.code_interne,
+                analysis_source=analysis_source, description=description,
+            ))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[WARN] Activity — échec journalisation analyse média ({activity_type}/{analysis_source}): {type(e).__name__}: {e}")
+
+    # 1. Lire le fichier, vérifier le cache (hash AVANT compression), sinon appeler Gemini
+    file_bytes = file.file.read()
     mime_type = file.content_type
+    image_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    # 2. Appeler l'API Gemini
-    prompt = (
-        "Analyse cette image ou vidéo de l'équipement industriel. Détecte s'il y a une anomalie, un danger imminent, "
-        "une fumée, un feu, une fuite, ou toute menace physique. Réponds strictement sous le format :\n"
-        "STATUS: [ALERTE ou NORMAL]\n"
-        "DESCRIPTION: [Une description concise en français du problème détecté, ou 'Tout est en ordre' si NORMAL]"
-    )
+    text_response = _media_cache.get(image_hash) if AI_MODE != "mock" else None
+    if text_response is not None:
+        _gemini_metrics.record_cache_hit("media")
+        print(f"[INFO] Cache media HIT — taux de hit cumulé: {_media_cache.hit_rate()}%")
+    else:
+        file_bytes, mime_type = compress_image_for_gemini(file_bytes, mime_type, source="analyze-media")
+        base64_data = base64.b64encode(file_bytes).decode("utf-8")
 
-    payload = {
-        "contents": [{
-            "parts": [
-                {
-                    "inlineData": {
-                        "mimeType": mime_type,
-                        "data": base64_data
+        # 2. Appeler l'API Gemini
+        prompt = (
+            "Analyse cette image ou vidéo de l'équipement industriel. Détecte s'il y a une anomalie, un danger imminent, "
+            "une fumée, un feu, une fuite, ou toute menace physique. Réponds strictement sous le format :\n"
+            "STATUS: [ALERTE ou NORMAL]\n"
+            "DESCRIPTION: [Une description concise en français du problème détecté, ou 'Tout est en ordre' si NORMAL]"
+        )
+
+        payload = {
+            "contents": [{
+                "parts": [
+                    {
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": base64_data
+                        }
+                    },
+                    {
+                        "text": prompt
                     }
-                },
-                {
-                    "text": prompt
+                ]
+            }],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 200, "thinkingConfig": {"thinkingBudget": 0}}
+        }
+
+        try:
+            result = call_gemini(payload, endpoint="media", timeout=40, retries=2)
+            text_response = result['candidates'][0]['content']['parts'][0]['text']
+        except RateLimiterSaturated as e:
+            # Distinct du fallback "simulation par nom de fichier" ci-dessous : ici,
+            # aucun appel Gemini n'a été tenté (quota local, pas un échec de l'API),
+            # donc deviner via le nom du fichier serait trompeur.
+            print(f"[WARN] Analyse média — limiteur Gemini sature: {e}")
+            return {
+                "status": "ERROR",
+                "description": "Quota local Gemini saturé, réessayez dans quelques instants.",
+                "message": "Quota local saturé, réessayez dans quelques instants.",
+            }
+        except Exception as e:
+            # En cas d'erreur ou d'absence de clé valide, mode démo basé sur le nom du fichier.
+            # Jamais mis en cache : un 503 transitoire ne doit pas se figer pour les prochains appels.
+            print(f"[WARN] Gemini analyze error: {gemini_error_summary(e)}")
+            filename_lower = file.filename.lower()
+            if any(w in filename_lower for w in ["fire", "feu", "smoke", "danger", "fuite", "leak"]):
+                mach.status = "alerte"
+                db.add(models.SensorMetric(
+                    machine_id=mach.id,
+                    power_kw=float(mach.puissance_nominale_kw) * 1.3,
+                    temperature_c=90.0,
+                    vibration_hz=45.0,
+                    pressure_bar=4.5,
+                ))
+                db.add(models.AIAlert(
+                    machine_id=mach.id,
+                    type_alerte="Simulation de danger visuel",
+                    description=f"Incident simulé suite au chargement du fichier de menace : {file.filename}",
+                    action_recommandee="Vérifiez les capteurs et l'alarme incendie.",
+                    gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
+                    is_resolved=False,
+                ))
+                db.commit()
+
+                log_media_activity("analyse_media_alerte", "fallback_filename", f"Menace simulée détectée (Fichier: {file.filename}).")
+                return {
+                    "status": "ALERTE",
+                    "description": f"Menace simulée détectée (Fichier: {file.filename}).",
+                    "message": f"Alerte de sécurité simulée sur l'appareil {mach.nom}."
                 }
-            ]
-        }],
-        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 200, "thinkingConfig": {"thinkingBudget": 0}}
-    }
+            log_media_activity("analyse_media_normal", "fallback_filename", "Aucune menace apparente détectée (Mode simulation).")
+            return {"status": "NORMAL", "description": "Aucune menace apparente détectée (Mode simulation)."}
 
-    try:
-        result = call_gemini(payload, timeout=40, retries=1)
-        text_response = result['candidates'][0]['content']['parts'][0]['text']
+        if AI_MODE != "mock":
+            _media_cache.set(image_hash, text_response)
+        print(f"[INFO] Cache media — taux de hit cumulé: {_media_cache.hit_rate()}% ({_media_cache.hits}/{_media_cache.hits + _media_cache.misses})")
 
-        status = "NORMAL"
-        description = "Aucun danger détecté."
+    status = "NORMAL"
+    description = "Aucun danger détecté."
 
-        for line in text_response.split('\n'):
-            if line.startswith("STATUS:"):
-                status = line.replace("STATUS:", "").strip()
-            elif line.startswith("DESCRIPTION:"):
-                description = line.replace("DESCRIPTION:", "").strip()
+    for line in text_response.split('\n'):
+        if line.startswith("STATUS:"):
+            status = line.replace("STATUS:", "").strip()
+        elif line.startswith("DESCRIPTION:"):
+            description = line.replace("DESCRIPTION:", "").strip()
 
-        if "ALERTE" in status:
-            mach.status = "alerte"
-            db.add(models.SensorMetric(
-                machine_id=mach.id,
-                power_kw=float(mach.puissance_nominale_kw) * 1.3,
-                temperature_c=85.0,
-                vibration_hz=48.0,
-                pressure_bar=5.0,
-            ))
-            db.add(models.AIAlert(
-                machine_id=mach.id,
-                type_alerte="Danger détecté par flux visuel",
-                description=f"L'analyse du flux vidéo/photo a identifié une menace : {description}",
-                action_recommandee="Inspectez l'équipement immédiatement et lancez la procédure de coupure d'urgence si nécessaire.",
-                gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
-                is_resolved=False,
-            ))
-            db.commit()
+    # En mode mock, Machine.status peut valoir "alerte" sans marque distinctive.
+    # La seule trace est le [MOCK] dans l'AIAlert liée. Ne jamais exécuter
+    # AI_MODE=mock contre une base destinée à une démo ou à la production.
+    if "ALERTE" in status:
+        mach.status = "alerte"
+        db.add(models.SensorMetric(
+            machine_id=mach.id,
+            power_kw=float(mach.puissance_nominale_kw) * 1.3,
+            temperature_c=85.0,
+            vibration_hz=48.0,
+            pressure_bar=5.0,
+        ))
+        db.add(models.AIAlert(
+            machine_id=mach.id,
+            type_alerte="Danger détecté par flux visuel",
+            description=f"L'analyse du flux vidéo/photo a identifié une menace : {description}",
+            action_recommandee="Inspectez l'équipement immédiatement et lancez la procédure de coupure d'urgence si nécessaire.",
+            gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
+            is_resolved=False,
+        ))
+        db.commit()
 
-            return {
-                "status": "ALERTE",
-                "description": description,
-                "message": f"Menace identifiée ! L'appareil {mach.nom} a été placé en état d'alerte de sécurité."
-            }
-        else:
-            return {
-                "status": "NORMAL",
-                "description": description,
-                "message": "Le flux média a été analysé. Aucun danger visible n'a été détecté."
-            }
-    except Exception as e:
-        # En cas d'erreur ou d'absence de clé valide, mode démo basé sur le nom du fichier
-        print(f"[WARN] Gemini analyze error: {gemini_error_summary(e)}")
-        filename_lower = file.filename.lower()
-        if any(w in filename_lower for w in ["fire", "feu", "smoke", "danger", "fuite", "leak"]):
-            mach.status = "alerte"
-            db.add(models.SensorMetric(
-                machine_id=mach.id,
-                power_kw=float(mach.puissance_nominale_kw) * 1.3,
-                temperature_c=90.0,
-                vibration_hz=45.0,
-                pressure_bar=4.5,
-            ))
-            db.add(models.AIAlert(
-                machine_id=mach.id,
-                type_alerte="Simulation de danger visuel",
-                description=f"Incident simulé suite au chargement du fichier de menace : {file.filename}",
-                action_recommandee="Vérifiez les capteurs et l'alarme incendie.",
-                gain_estime_fcfa=float(mach.puissance_nominale_kw) * 100 * 24 * 5,
-                is_resolved=False,
-            ))
-            db.commit()
-
-            return {
-                "status": "ALERTE",
-                "description": f"Menace simulée détectée (Fichier: {file.filename}).",
-                "message": f"Alerte de sécurité simulée sur l'appareil {mach.nom}."
-            }
-        return {"status": "NORMAL", "description": "Aucune menace apparente détectée (Mode simulation)."}
+        log_media_activity("analyse_media_alerte", "gemini", description)
+        return {
+            "status": "ALERTE",
+            "description": description,
+            "message": f"Menace identifiée ! L'appareil {mach.nom} a été placé en état d'alerte de sécurité."
+        }
+    else:
+        log_media_activity("analyse_media_normal", "gemini", description)
+        return {
+            "status": "NORMAL",
+            "description": description,
+            "message": "Le flux média a été analysé. Aucun danger visible n'a été détecté."
+        }
 
 if __name__ == '__main__':
     import uvicorn

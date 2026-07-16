@@ -8,6 +8,7 @@ psycopg2-binary
 bcrypt
 python-jose[cryptography]
 requests
+Pillow
 joblib
 xgboost
 scikit-learn

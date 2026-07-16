@@ -13,6 +13,9 @@ __pycache__/
 .venv/
 venv/
 
+# Images de test locales (données personnelles, jamais commitées)
+backend/tests/fixtures/
+
 # Node / Next.js (frontend/.gitignore handles env files/build output already)
 frontend/node_modules/
 frontend/.next/

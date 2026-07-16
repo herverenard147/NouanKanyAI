@@ -1,14 +1,78 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, Server, ShieldAlert, Cpu, Globe, Zap, Database, CheckCircle, Network, AlertTriangle, Settings2, X, Power } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Activity, Server, Cpu, Globe, Zap, Database, CheckCircle, Network, AlertTriangle, Settings2, X, Power, Wrench, FileText, LogIn, Camera } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 import { authHeaders, getCurrentUser } from '@/lib/auth';
 import { useLanguage } from '@/lib/i18n';
 
+function formatUptime(seconds: number | null | undefined, t: ReturnType<typeof useLanguage>['t']): string {
+  if (seconds === null || seconds === undefined) return '—';
+  if (seconds < 60) return t('admin', 'uptimeSeconds');
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  const j = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  return `${j}j ${h}h`;
+}
+
+// timestamp backend : datetime.utcnow().isoformat() côté Python, donc une chaîne
+// naïve SANS suffixe "Z"/offset (ex. "2026-07-16T09:34:12.949"). new Date() sur une
+// telle chaîne la traite comme heure LOCALE du navigateur, pas UTC — même convention
+// (et même limite) que appareils/page.tsx:685 ailleurs dans ce portail. Un admin dans
+// un fuseau très éloigné d'UTC verrait un décalage ; hors périmètre de cette étape.
+function formatRelativeTime(iso: string | null | undefined, lang: string): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '—';
+  const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+  const diffSec = Math.round((date.getTime() - Date.now()) / 1000);
+  if (Math.abs(diffSec) < 60) return rtf.format(diffSec, 'second');
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return rtf.format(diffMin, 'minute');
+  const diffH = Math.round(diffMin / 60);
+  if (Math.abs(diffH) < 24) return rtf.format(diffH, 'hour');
+  const diffD = Math.round(diffH / 24);
+  return rtf.format(diffD, 'day');
+}
+
+const ACTIVITY_TYPE_KEYS: Record<string, string> = {
+  delestage: 'activityTypeDelestage',
+  reset_admin: 'activityTypeResetAdmin',
+  ocr_upload: 'activityTypeOcrUpload',
+  connexion: 'activityTypeConnexion',
+  analyse_media_normal: 'activityTypeAnalyseMediaNormal',
+  analyse_media_alerte: 'activityTypeAnalyseMediaAlerte',
+};
+
+const ACTIVITY_ICONS: Record<string, any> = {
+  delestage: Zap,
+  reset_admin: Wrench,
+  ocr_upload: FileText,
+  connexion: LogIn,
+  analyse_media_normal: Camera,
+  analyse_media_alerte: Camera,
+};
+
+// Libellé construit CÔTÉ FRONTEND à partir du type + clés i18n (cohérent avec
+// l'étape 3 et la 5B : le backend ne renvoie que des données structurées brutes).
+function getActivityLabel(act: any, t: ReturnType<typeof useLanguage>['t']): string {
+  const typeKey = ACTIVITY_TYPE_KEYS[act?.type];
+  let label = typeKey ? t('admin', typeKey) : t('admin', 'activityTypeUnknown');
+  const source = act?.extras?.analysis_source;
+  if ((act?.type === 'analyse_media_normal' || act?.type === 'analyse_media_alerte') && source) {
+    const sourceKey = source === 'gemini' ? 'activitySourceGemini' : 'activitySourceFallback';
+    label = `${label} (${t('admin', sourceKey)})`;
+  }
+  return label;
+}
+
 export default function AdminDashboardPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState("");
@@ -94,19 +158,6 @@ export default function AdminDashboardPage() {
       showNotification(t('admin', 'roleChangeError'));
     }
   };
-
-  // Génère dynamiquement les données de dérive du modèle à partir de la précision réelle retournée par l'API
-  const generateDriftData = (baseMape: number) => {
-    const hours = ['00h', '04h', '08h', '10h', '12h', '14h', '16h', '18h', '20h', '22h'];
-    return hours.map(h => ({
-      time: h,
-      error: parseFloat((baseMape * (0.85 + Math.random() * 0.35)).toFixed(2))
-    }));
-  };
-
-  const driftData = data
-    ? generateDriftData(data.ml_health.xgboost_mape)
-    : [];
 
   if (loading) {
     return (
@@ -248,7 +299,10 @@ export default function AdminDashboardPage() {
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {data.recent_activities?.map((act: any, idx: number) => (
+              {data.recent_activities?.map((act: any, idx: number) => {
+                const Icon = ACTIVITY_ICONS[act?.type] || Activity;
+                const userLabel = act?.user_name || t('admin', 'deletedUser');
+                return (
                 <div key={idx} style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -260,19 +314,22 @@ export default function AdminDashboardPage() {
                   transition: 'all 0.2s ease'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--tint-subtle)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>
-                      {act.user_name.charAt(0)}
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--tint-subtle)', border: '1px solid var(--surface-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}>
+                      <Icon size={16} />
                     </div>
                     <div>
                       <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                        <strong style={{ color: 'var(--foreground)' }}>{act.user_name}</strong> : {act.action}
+                        <strong style={{ color: 'var(--foreground)' }}>{userLabel}</strong> — {getActivityLabel(act, t)}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, marginTop: '2px' }}>🎯 {act.target}</div>
+                      {act?.ref_id && (
+                        <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, marginTop: '2px' }}>🎯 {act.ref_id}</div>
+                      )}
                     </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{act.timestamp}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{formatRelativeTime(act?.timestamp, lang)}</div>
                 </div>
-              ))}
+                );
+              })}
               {(!data.recent_activities || data.recent_activities.length === 0) && (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '20px' }}>{t('admin', 'noActivities')}</div>
               )}
@@ -289,20 +346,38 @@ export default function AdminDashboardPage() {
               <Cpu size={16} color="var(--primary)" /> {t('admin', 'modelHealth')}
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'xgboostAccuracy')}</span>
-                <span style={{ fontWeight: 700, color: '#10B981', fontSize: '13px' }}>{data.ml_health.xgboost_accuracy}%</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'errorRate')}</span>
-                <span style={{ fontWeight: 700, color: '#F59E0B', fontSize: '13px' }}>{data.ml_health.xgboost_mape}%</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'anomaliesDetected')}</span>
-                <span style={{ fontWeight: 700, color: '#EF4444', fontSize: '13px' }}>{data.ml_health.isolation_forest_anomalies_detected}</span>
-              </div>
-            </div>
+            {(() => {
+              const xgb = data.model_metrics?.xgboost;
+              const hasMetrics = xgb && xgb.r2 !== null && xgb.r2 !== undefined;
+              const datasetLabel = xgb?.dataset === 'synthetic' ? t('admin', 'modelMetricDatasetSynthetic') : xgb?.dataset;
+              return (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'modelMetricR2')}</span>
+                      <span style={{ fontWeight: 700, color: '#10B981', fontSize: '13px' }}>{hasMetrics ? xgb.r2.toFixed(3) : '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'modelMetricMae')}</span>
+                      <span style={{ fontWeight: 700, color: '#F59E0B', fontSize: '13px' }}>{hasMetrics && xgb.mae_kw !== null ? `${xgb.mae_kw.toFixed(2)} kW` : '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'modelMetricMape')}</span>
+                      <span style={{ fontWeight: 700, color: '#F59E0B', fontSize: '13px' }}>{hasMetrics && xgb.mape_pct !== null ? `${xgb.mape_pct.toFixed(1)} %` : '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: 'var(--background-alt)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{t('admin', 'anomaliesDetected')}</span>
+                      <span style={{ fontWeight: 700, color: '#EF4444', fontSize: '13px' }}>{data.ml_health.isolation_forest_anomalies_detected}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                    {hasMetrics
+                      ? `${t('admin', 'modelMetricMeasuredOn')} ${datasetLabel} — ${formatRelativeTime(xgb.computed_at, lang)}`
+                      : t('admin', 'modelMetricNotEvaluated')}
+                  </div>
+                </>
+              );
+            })()}
 
             <button onClick={() => showNotification(t('admin', 'retrainSoon'))} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
               {t('admin', 'retrainModels')}
@@ -319,9 +394,9 @@ export default function AdminDashboardPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Network size={16} color="var(--text-muted)" />
-                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'apiUptime')}</span>
+                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'serverUptime')}</span>
                 </div>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.api_uptime}</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{formatUptime(data.system.process_uptime_seconds, t)}</span>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
@@ -332,19 +407,15 @@ export default function AdminDashboardPage() {
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.database_status}</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid var(--surface-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ShieldAlert size={16} color="var(--text-muted)" />
-                  <span style={{ fontWeight: 600, fontSize: '12px' }}>{t('admin', 'auditLedger')}</span>
-                </div>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>{data.system.blockchain_ledger}</span>
-              </div>
-
               <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '12px', borderRadius: '8px', marginTop: '4px', display: 'flex', gap: '10px' }}>
                 <CheckCircle color="#10B981" size={18} style={{ flexShrink: 0 }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '11px', color: '#10B981', marginBottom: '2px' }}>{t('admin', 'systemsOperational')}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t('admin', 'avgLatency')}: {data.system.avg_latency_ms}ms.</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {t('admin', 'avgLatency')}: {data.system.avg_latency_ms !== null && data.system.avg_latency_ms !== undefined
+                      ? `${data.system.avg_latency_ms}ms (${data.system.sample_count} req.)`
+                      : '—'}
+                  </div>
                 </div>
               </div>
             </div>

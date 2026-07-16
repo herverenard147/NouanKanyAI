@@ -152,3 +152,27 @@ class AIAlert(Base):
     gain_estime_fcfa = Column(Float)
     is_resolved = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Activity(Base):
+    """Flux "activités récentes" du portail admin — distincte d'AuditLog (couplée
+    aux calculs financiers de /api/facturation, ne pas mélanger les deux). Écriture
+    directe uniquement pour les événements sans autre trace exploitable (connexions,
+    analyses média) ; les autres types du flux admin (délestages, resets, uploads
+    OCR) sont LUS depuis leurs tables d'origine (AuditLog, ElectricityBill), jamais
+    dupliqués ici — voir /api/admin/metrics."""
+    __tablename__ = "activities"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # "connexion" | "analyse_media_normal" | "analyse_media_alerte"
+    activity_type = Column(String, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # code_interne de la machine concernée, le cas échéant (ex: analyse média) — même
+    # convention que AuditLog.ref_hash, pas l'UUID interne.
+    ref_id = Column(String, nullable=True)
+    # "gemini" | "fallback_filename" — uniquement pour activity_type analyse_media_*,
+    # NULL pour les autres types (ex: connexion). Axe indépendant de activity_type
+    # (résultat) pour rester requêtable séparément, ex. calcul d'un "fallback rate".
+    analysis_source = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

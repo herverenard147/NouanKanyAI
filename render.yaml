@@ -15,6 +15,13 @@ services:
       # Secrets réels à saisir dans le dashboard Render (jamais committés) :
       - key: GEMINI_API_KEY
         sync: false
+      # Identifiant de modèle Gemini, épinglé explicitement (jamais un alias "-latest") :
+      # gemini-3.5-flash est le modèle actuellement pointé par gemini-flash-latest
+      # (source : release notes Google, ai.google.dev/gemini-api/docs/changelog).
+      # Épingler sur cette version explicite neutralise le risque de bascule silencieuse
+      # par Google, sans changer le comportement du produit en production.
+      - key: GEMINI_MODEL
+        value: "gemini-3.5-flash"
       # Chaîne de connexion PostgreSQL (Render Postgres "nouankanyai-db")
       - key: DATABASE_URL
         sync: false
@@ -29,6 +36,25 @@ services:
       # automatiquement le rôle superadmin (bootstrap sans accès direct à la base).
       - key: SUPERADMIN_EMAIL
         sync: false
+      # "mock" | "live" — "live" explicite en production pour que les 3 endpoints IA
+      # appellent réellement Gemini. En développement local, mettre AI_MODE=mock dans
+      # backend/.env (voir backend/.env.example) pour ne consommer aucun quota Gemini
+      # pendant les tests.
+      - key: AI_MODE
+        value: "live"
+      # Plafond du limiteur de débit local vers Gemini (voir GeminiRateLimiter, main.py).
+      # N'est valable QUE tant que startCommand ci-dessus reste mono-process (pas de
+      # --workers) et que ce service reste sur un plan sans autoscaling (pas de bloc
+      # `scaling` ci-dessous) — sinon ce plafond en mémoire ne coordonne plus rien
+      # entre plusieurs process/instances et ne protège plus le quota Gemini réel.
+      - key: GEMINI_RATE_LIMIT_PER_MINUTE
+        value: "10"
+      # Budget d'attente en file (secondes) pour un slot du limiteur, SÉPARÉ du
+      # timeout réseau de chaque endpoint (chat 20s, OCR/média 40s). Échouer vite
+      # avec un message explicite vaut mieux que faire attendre 20-40s pour le
+      # même message.
+      - key: GEMINI_MAX_QUEUE_WAIT
+        value: "8"
 
   # --- Frontend : Next.js 15 ---
   - type: web
