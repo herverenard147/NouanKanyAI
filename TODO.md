@@ -58,3 +58,32 @@ Ces trois points sont notés pour la traçabilité, aucun n'est urgent.
 
 2. Vérifier si le même problème existe sur Machine (deux machines même nom,
    même site) et sur d'autres entités déclaratives — probablement.
+
+## Prose encore incohérente après le renommage "prévision IA" -> "statistique"
+
+Contexte : étape 7 du chantier "élimination du statique" (renommage de
+`source: "ia"` -> `"statistique"` sur `/api/bills/forecast`). Le périmètre de
+l'étape portait sur la valeur `source` et les libellés UI directement
+associés au badge de prévision (grep exhaustif "prevision ia" / "ai forecast"
+— 0 occurrence après correction). Des mentions plus diffuses de "l'IA" pour
+décrire ce mécanisme (moyenne mobile + facteur de correction, pas un modèle
+ML) subsistent, hors périmètre strict du grep car formulées différemment :
+
+1. `frontend/src/lib/i18n.tsx` :
+   - `billsDesc` (~ligne 152) : "pour que l'IA base ses prévisions... pour
+     que l'IA affine sa précision."
+   - `notifActualSaved` (~ligne 181) : "l'IA recalibre ses prochaines
+     prévisions."
+2. `backend/main.py`, docstring de `confirm_bill_actual` (~ligne 1049) :
+   "pour que les prochaines prévisions de l'IA s'améliorent."
+
+Ces textes ne sont pas faux à 100% (le "facteur de correction" est bien un
+mécanisme adaptatif), mais le mot "IA" y suggère un modèle ML alors que la
+méthode réelle est une moyenne mobile pondérée — la même ambiguïté que
+l'étape 7 a corrigée pour le badge. Pas traité ici pour rester strictement
+dans le périmètre validé (renommage de `source` + labels associés). À
+recadrer explicitement si on veut une réécriture cohérente de toute la prose
+"prévision" du module facturation.
+
+Priorité : basse, aucun impact fonctionnel — question de cohérence de
+discours uniquement.
