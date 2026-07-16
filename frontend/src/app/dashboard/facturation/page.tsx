@@ -17,7 +17,7 @@ export default function FacturationPage() {
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState("");
 
-  // Factures d'électricité réelles du client (photo/manuel/prévision IA)
+  // Factures d'électricité réelles du client (photo/manuel/prévision statistique)
   const [bills, setBills] = useState<any[]>([]);
   const [uploadingBill, setUploadingBill] = useState(false);
   const [generatingForecast, setGeneratingForecast] = useState(false);
@@ -314,7 +314,7 @@ export default function FacturationPage() {
             </div>
           </div>
 
-          {/* Factures d'électricité réelles + prévisions IA */}
+          {/* Factures d'électricité réelles + prévisions statistiques */}
           <div className="glass-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '12px' }}>
               <h3 style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{t('facturation', 'billsForecast')}</h3>

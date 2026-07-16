@@ -882,7 +882,7 @@ def serialize_bill(i: models.ElectricityBill) -> dict:
 
 @app.get("/api/bills")
 def list_bills(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    """Liste les factures d'électricité du client (historique, importées par photo, et prévisions IA)."""
+    """Liste les factures d'électricité du client (historique, importées par photo, et prévisions statistiques)."""
     rows = db.query(models.ElectricityBill).filter(models.ElectricityBill.user_id == user_id).order_by(models.ElectricityBill.created_at.desc()).all()
     return [serialize_bill(i) for i in rows]
 
