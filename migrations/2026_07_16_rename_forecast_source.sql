@@ -1,0 +1,26 @@
+-- Migration : renommage de la source "ia" -> "statistique" sur electricity_bills
+--
+-- Contexte : les prévisions de facture générées par /api/bills/forecast n'ont
+-- jamais été produites par un modèle IA/ML — la méthode est une moyenne
+-- mobile des 3 dernières factures réelles, recalibrée par un facteur de
+-- correction appris des écarts prévision/réel (voir generate_bill_forecast
+-- dans backend/main.py). Le code applicatif a été corrigé pour écrire
+-- source = 'statistique' sur toute nouvelle prévision (ÉTAPE 7 du chantier
+-- "élimination du statique"). Cette migration aligne les lignes déjà
+-- existantes en base sur cette même valeur, pour que l'historique reste
+-- cohérent avec les nouvelles écritures et avec le libellé affiché côté UI
+-- ("Prévision statistique").
+--
+-- Portée : ne touche que les lignes marquées source = 'ia'. Les sources
+-- "manuel" et "ocr" ne sont pas concernées.
+--
+-- Application manuelle (PAS exécutée automatiquement au démarrage du
+-- backend) :
+--   psql "$DATABASE_URL" -f migrations/2026_07_16_rename_forecast_source.sql
+-- ou, depuis le shell Render (dashboard -> service Postgres -> Connect),
+-- coller directement la requête UPDATE ci-dessous.
+--
+-- Idempotente : ré-exécutable sans risque, la clause WHERE ne matche plus
+-- rien après la première application.
+
+UPDATE electricity_bills SET source = 'statistique' WHERE source = 'ia';

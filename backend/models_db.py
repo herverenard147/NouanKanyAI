@@ -110,7 +110,8 @@ class ElectricityBill(Base):
     month = Column(String)
     amount_xof = Column(Float)
     # Provenance de l'enregistrement : "manuel" (saisie), "ocr" (photo de facture analysée
-    # par l'IA), ou "ia" (prévision générée par l'IA à partir de l'historique).
+    # par l'IA), ou "statistique" (prévision par moyenne mobile + facteur de correction,
+    # calculée sur l'historique — pas un modèle ML).
     source = Column(String, default="manuel")
     is_forecast = Column(Boolean, default=False)
     # Renseigné quand la vraie facture arrive pour un mois qui avait été prévu par l'IA,

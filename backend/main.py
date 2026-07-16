@@ -1032,7 +1032,7 @@ def generate_bill_forecast(user_id: str = Depends(get_current_user_id), db: Sess
 
     bill = models.ElectricityBill(
         user_id=user_id, month=month_label, amount_xof=predicted_amount,
-        source="ia", is_forecast=True,
+        source="statistique", is_forecast=True,
     )
     db.add(bill)
     db.commit()
