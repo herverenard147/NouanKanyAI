@@ -244,8 +244,6 @@ const dict = {
     modelMetricMeasuredOn: { fr: 'Mesuré sur', en: 'Measured on' },
     modelMetricDatasetSynthetic: { fr: 'données de simulation', en: 'simulation data' },
     anomaliesDetected: { fr: 'ANOMALIES DÉTECTÉES', en: 'ANOMALIES DETECTED' },
-    retrainModels: { fr: 'Réentraîner les modèles', en: 'Retrain models' },
-    retrainSoon:  { fr: "Le ré-entraînement à la demande depuis l'interface n'est pas encore disponible.", en: 'On-demand retraining from the interface is not yet available.' },
     serverUptime: { fr: 'Serveur actif depuis', en: 'Server active for' },
     uptimeSeconds:{ fr: 'Quelques secondes', en: 'A few seconds' },
     dbStatus:     { fr: 'Base de Données', en: 'Database' },

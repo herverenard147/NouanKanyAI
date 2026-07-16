@@ -325,6 +325,14 @@ backend/ml/
 
 ---
 
+## Fonctionnalités reportées
+
+Le réentraînement à la demande des modèles ML est prévu en Phase 2/3,
+lorsque des données de production réelles seront disponibles et
+justifieront un job de fond dédié.
+
+---
+
 ## 📄 Licence
 
 Ce projet est sous licence **MIT**. Voir le fichier `LICENSE` pour plus de détails.

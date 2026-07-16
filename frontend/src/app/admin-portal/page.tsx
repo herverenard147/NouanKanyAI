@@ -378,10 +378,6 @@ export default function AdminDashboardPage() {
                 </>
               );
             })()}
-
-            <button onClick={() => showNotification(t('admin', 'retrainSoon'))} className="btn-primary" style={{ padding: '10px 16px', fontSize: '12px', height: 'auto', border: 'none', cursor: 'pointer' }}>
-              {t('admin', 'retrainModels')}
-            </button>
           </div>
 
           {/* System Status */}
